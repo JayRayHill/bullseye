@@ -52,9 +52,12 @@ export function ActiveCustomerCard({ customer }: { customer: Customer }) {
 
 function Row({ label, value }: { label: string; value: string }) {
   return (
-    <div className="text-sm">
+    // min-w-0 lets the column shrink so long values (emails, addresses)
+    // wrap inside their cell instead of bleeding into the next column.
+    // break-words allows the browser to break long unbroken strings.
+    <div className="min-w-0 text-sm">
       <dt className="text-xs uppercase tracking-wide text-slate-500 dark:text-slate-400">{label}</dt>
-      <dd className="text-slate-900 dark:text-slate-100">{value}</dd>
+      <dd className="break-words text-slate-900 dark:text-slate-100">{value}</dd>
     </div>
   );
 }

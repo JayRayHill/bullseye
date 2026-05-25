@@ -26,7 +26,9 @@ export function AdditionalFields({
       </summary>
       <dl className="mt-3 grid grid-cols-1 gap-x-6 gap-y-2 text-sm sm:grid-cols-2">
         {extras.map((h) => (
-          <div key={h}>
+          // min-w-0 lets the grid cell shrink so long values wrap inside
+          // the cell instead of overflowing into the next column.
+          <div key={h} className="min-w-0">
             <dt className="text-xs uppercase tracking-wide text-slate-500 dark:text-slate-400">{h}</dt>
             <dd className="break-words text-slate-800 dark:text-slate-200">{customer.raw[h]}</dd>
           </div>
