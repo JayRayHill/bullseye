@@ -114,17 +114,21 @@ export function autoDetectColumns(headers: string[], rows: RawRow[] = []): Colum
   for (const field of Object.keys(ALIASES) as CanonicalField[]) {
     const aliases = ALIASES[field].map(normalizeHeader);
     const aliasSet = new Set(aliases);
-    // Collect BOTH exact and substring candidates. The user's CRM might have
-    // a "Postal Code" column (exact match, contact's personal zip — often
-    // empty) and a "Postal Code_1" column (substring match because of the
-    // _1 suffix, but the company HQ zip with real values). We want to score
-    // them together by fill rate.
+
+    // Exact matches are semantically reliable — "Company Name" means business
+    // name, period. Substring matches are LAST-RESORT only, because they're
+    // too permissive ("First Name" substring-matches the alias 'name' for
+    // business_name, "Contact owner" matches 'owner', etc.). We try exact
+    // first, fall back to substring only when no exact matches exist at all.
     const exactMatches = normalized.filter((h) => aliasSet.has(h.norm));
-    const substringOnly = normalized.filter(
-      (h) => !aliasSet.has(h.norm) && aliases.some((a) => h.norm.includes(a))
-    );
-    // Exact matches come first → tiebreaker prefers exact over substring.
-    const candidates = [...exactMatches, ...substringOnly];
+    let candidates: typeof normalized;
+    if (exactMatches.length > 0) {
+      candidates = exactMatches;
+    } else {
+      candidates = normalized.filter((h) =>
+        aliases.some((a) => h.norm.includes(a))
+      );
+    }
 
     if (candidates.length === 0) {
       mapping[field] = null;
@@ -134,9 +138,11 @@ export function autoDetectColumns(headers: string[], rows: RawRow[] = []): Colum
       mapping[field] = candidates[0].raw;
       continue;
     }
-    // Multiple candidates — score each by how many of the sampled rows
-    // actually have a value in that column, pick the highest. Ties keep
-    // the earlier candidate (header order, with exact matches first).
+    // Multiple candidates of the SAME kind (all exact, or all substring) —
+    // score each by how many of the sampled rows have a value, pick the
+    // highest. Ties keep the earlier candidate (matches header order).
+    // This is what saves us from HubSpot's duplicate "Postal Code" columns:
+    // both exact-match, fill rate distinguishes the populated one.
     let bestRaw = candidates[0].raw;
     let bestFill = fillRate(bestRaw);
     for (let i = 1; i < candidates.length; i++) {
