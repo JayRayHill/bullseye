@@ -35,13 +35,19 @@ function bullseyeRings(hover: boolean): string {
   </svg>`;
 }
 
+// Teardrop path natural extent is y=0..32. With a 2px stroke, the stroke
+// half (1px) at y=0 actually renders at y=-1..1 — and y=-1 is OUTSIDE the
+// 0..32 viewBox, so the top pixel of the stroke gets clipped (visible as a
+// flat-cut pin top). Same story at the bottom. We shift the path down by 1
+// and scale vertically by 30/32 so the stroke fits cleanly inside the
+// viewBox top + bottom. Tiny ~6% vertical shrink — imperceptible.
+const VERT_FIT = 30 / 32; // 0.9375
+
 function lostPin(darkTile: boolean, hover: boolean): string {
   const fill = darkTile ? LOST_GRAY_LIGHT : LOST_GRAY;
   const scale = hover ? 1.1 : 1;
-  // Teardrop with X. Logical canvas remains 24×32; we leave whitespace at the top
-  // to avoid clipping. Hover variant scales up the path slightly.
   return `<svg xmlns="http://www.w3.org/2000/svg" width="${LOGICAL_SIZE}" height="${LOGICAL_SIZE}" viewBox="0 0 32 32">
-    <g transform="translate(${(32 - 24 * scale) / 2}, 0) scale(${scale})">
+    <g transform="translate(${(32 - 24 * scale) / 2}, 1) scale(${scale}, ${scale * VERT_FIT})">
       <path d="M12 0C5.4 0 0 5.4 0 12c0 8 12 20 12 20s12-12 12-20C24 5.4 18.6 0 12 0z" fill="${fill}" stroke="${WHITE}" stroke-width="2"/>
       <path d="M9 9l6 6M15 9l-6 6" stroke="${WHITE}" stroke-width="2" stroke-linecap="round"/>
     </g>
@@ -51,7 +57,7 @@ function lostPin(darkTile: boolean, hover: boolean): string {
 function leadPin(hover: boolean): string {
   const scale = hover ? 1.1 : 1;
   return `<svg xmlns="http://www.w3.org/2000/svg" width="${LOGICAL_SIZE}" height="${LOGICAL_SIZE}" viewBox="0 0 32 32">
-    <g transform="translate(${(32 - 24 * scale) / 2}, 0) scale(${scale})">
+    <g transform="translate(${(32 - 24 * scale) / 2}, 1) scale(${scale}, ${scale * VERT_FIT})">
       <path d="M12 0C5.4 0 0 5.4 0 12c0 8 12 20 12 20s12-12 12-20C24 5.4 18.6 0 12 0z" fill="${LEAD_AMBER}" stroke="${WHITE}" stroke-width="2"/>
       <circle cx="12" cy="12" r="4" fill="${WHITE}"/>
     </g>
