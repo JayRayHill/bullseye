@@ -44,15 +44,19 @@ detail panel.
 The map shows three kinds of customers, classified from two columns:
 
 1. **Closed (green pin)** — row has a value in `deal_close_date` (any
-   non-empty cell). The presence of a close date is the signal that the deal
-   was won. Header synonyms: "deal close date", "recent deal close date",
-   "close date", "won date", "date closed", "closing date".
-2. **Lost (gray pin)** — no close date AND `deal_status` matches a lost token
-   ("lost", "closed lost", "dead").
+   non-empty cell) **OR** a positive `deal_value` / REAL LTV. Either signal
+   counts: a close date means the deal was won; a positive lifetime value
+   means money changed hands. Header synonyms recognized:
+   - close date: "deal close date", "recent deal close date", "close date",
+     "won date", "date closed", "closing date"
+   - deal value / LTV: "deal value", "amount", "value", "revenue", "ARR",
+     "MRR", "LTV", "REAL LTV", "lifetime value", "contract value"
+2. **Lost (gray pin)** — no close date, no positive value, AND `deal_status`
+   matches a lost token ("lost", "closed lost", "dead").
 3. **Open lead (amber pin)** — everything else.
 
-Both `deal_close_date` and `deal_status` are optional. If neither is mapped,
-every row becomes an open lead.
+`deal_close_date`, `deal_value`, and `deal_status` are all optional. If none
+are mapped, every row becomes an open lead.
 
 Pins on the map:
 

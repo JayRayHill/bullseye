@@ -67,6 +67,13 @@ const ALIASES: Record<CanonicalField, string[]> = {
     'arr',
     'mrr',
     'contractvalue',
+    // LTV-style aliases — a positive value here also flags the row as closed
+    // (see normalizeRow.ts).
+    'ltv',
+    'realltv',
+    'lifetimevalue',
+    'reallifetimevalue',
+    'customerltv',
   ],
   last_contact_date: [
     'lastcontact',

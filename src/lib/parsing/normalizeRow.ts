@@ -3,11 +3,13 @@
 // captured as an UploadError; the user sees aggregate counts and (optionally) a
 // list of the first N skipped rows in the upload summary.
 //
-// Deal classification (new rules):
-//   1. Row has a parseable deal_close_date → 'closed' (won)
+// Deal classification rules:
+//   1. Row has a non-empty deal_close_date OR a positive deal_value → 'closed'
+//      (REAL LTV / deal_value > 0 means money changed hands → real customer)
 //   2. Else deal_status normalizes to 'lost' → 'lost'
 //   3. Else                                  → 'not_closed' (open lead)
-// deal_status is optional. If absent, rows without a close date default to lead.
+// All three signal columns are optional. If none are present, rows default to
+// 'not_closed'.
 
 import type {
   ColumnMapping,
@@ -106,13 +108,19 @@ export function normalizeRows(
       return;
     }
 
-    // Classification: close date wins, then lost flag, else open lead.
+    // Read all classification signals up front so we can OR them together.
     const closeDateParsed = parseDate(readField(row, mapping, 'deal_close_date'));
+    const dealValue = parseDealValue(readField(row, mapping, 'deal_value'));
     const rawStatus = readField(row, mapping, 'deal_status');
+
+    // Classification:
+    //  - non-empty close date OR positive deal_value (REAL LTV) → closed
+    //  - else status says 'lost' → lost
+    //  - else → open lead
+    const hasCloseDate = !!(closeDateParsed.iso || closeDateParsed.raw);
+    const hasPositiveLTV = dealValue !== undefined && dealValue > 0;
     let status: DealStatus;
-    if (closeDateParsed.iso || closeDateParsed.raw) {
-      // Any non-empty close-date value counts as "won" even if unparseable —
-      // the presence of a date is the signal, parsing failures shouldn't downgrade.
+    if (hasCloseDate || hasPositiveLTV) {
       status = 'closed';
     } else if (isLostStatus(rawStatus)) {
       status = 'lost';
@@ -123,8 +131,6 @@ export function normalizeRows(
     const occurrence = sameZipCounter.get(zip) ?? 0;
     const [lat, lng] = jitterCoord(coord[0], coord[1], occurrence);
     sameZipCounter.set(zip, occurrence + 1);
-
-    const dealValue = parseDealValue(readField(row, mapping, 'deal_value'));
     const state = readField(row, mapping, 'state').trim().toUpperCase().slice(0, 2) || undefined;
     const city = readField(row, mapping, 'city').trim() || undefined;
     const contactName = readField(row, mapping, 'contact_name').trim() || undefined;

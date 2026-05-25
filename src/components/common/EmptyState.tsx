@@ -83,8 +83,9 @@ export function EmptyState({ onTrySample }: { onTrySample: () => void }) {
           </p>
           <p>
             <strong>How deals are classified:</strong> a row with a value in{' '}
-            <code className="rounded bg-slate-100 px-1 py-0.5 dark:bg-slate-800">deal_close_date</code> is a closed
-            customer (green). Without a close date, rows where{' '}
+            <code className="rounded bg-slate-100 px-1 py-0.5 dark:bg-slate-800">deal_close_date</code> <em>or</em> a
+            positive <code className="rounded bg-slate-100 px-1 py-0.5 dark:bg-slate-800">deal_value</code> / REAL LTV is
+            a closed customer (green). Without either signal, rows where{' '}
             <code className="rounded bg-slate-100 px-1 py-0.5 dark:bg-slate-800">deal_status</code> is &ldquo;lost&rdquo;
             show in gray; everything else is treated as an open lead (amber).
           </p>
