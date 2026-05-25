@@ -6,15 +6,17 @@
 //   - Feature-state hover/active swaps are a single GPU draw, not React renders
 //
 // Tile style: OpenFreeMap (free, no API key, attribution-ready).
-//   - Light: liberty — colorful OSM-style basemap (yellow highways, blue
-//            water, green parks). Closer to a "classic map" feel than
-//            positron, which is intentionally restrained for data viz.
+//   - Light: bright — full colorful OSM-style basemap (red/orange road
+//            categories, blue water, green parks, terrain shading). The
+//            most "classic map" feel of OpenFreeMap's offerings; spatial
+//            context (highways, terrain) actively helps reps understand
+//            where customers sit relative to each other.
 //   - Dark:  dark — monochrome dark. (OpenFreeMap doesn't currently offer a
 //            colorful dark variant; if reps want more color in dark mode,
 //            we can switch to a paid provider like MapTiler.)
 // Other OpenFreeMap styles available with a 1-line URL swap:
-//   - positron   (cleaner, more minimal — what we used before)
-//   - bright     (similar to liberty, slightly different palette)
+//   - positron   (cleanest, most minimal)
+//   - liberty    (between positron and bright — atlas-like)
 // To swap to MapTiler later, just point STYLE_URL_* at their style endpoints
 // (which take ?key=YOUR_KEY in the URL).
 //
@@ -38,6 +40,7 @@ import maplibregl, {
 } from 'maplibre-gl';
 import type { Customer } from '../../types';
 import { useSelection } from '../../context/SelectionContext';
+import { useCampaign } from '../../context/CampaignContext';
 import { useNearbyLeads } from '../../hooks/useNearbyLeads';
 import { useFilters } from '../../context/FiltersContext';
 import { useTheme } from '../../context/ThemeContext';
@@ -47,7 +50,7 @@ const DEFAULT_CENTER: [number, number] = [-98.35, 39.5]; // MapLibre uses [lng, 
 const DEFAULT_ZOOM = 3.5;
 
 // OpenFreeMap styles. Free, no API key. Attribution baked into the style.
-const STYLE_LIGHT = 'https://tiles.openfreemap.org/styles/liberty';
+const STYLE_LIGHT = 'https://tiles.openfreemap.org/styles/bright';
 const STYLE_DARK = 'https://tiles.openfreemap.org/styles/dark';
 
 const CUSTOMERS_SOURCE = 'customers';
@@ -67,7 +70,10 @@ interface TerritoryMapProps {
 
 export function TerritoryMap({ customers, allCustomers }: TerritoryMapProps) {
   const { filters } = useFilters();
-  const { activeCustomerId, hoveredId, setActive, setHovered } = useSelection();
+  const { activeCustomerId, hoveredId, setActive, setHovered, clearSelection } = useSelection();
+  // Alias to avoid name collision with SelectionContext.clearSelection — both
+  // contexts expose a method by that name but they clear different things.
+  const { clearSelection: clearCampaignSelection } = useCampaign();
   const { leads } = useNearbyLeads(allCustomers, activeCustomerId, filters.radiusMiles);
   const { effectiveTheme } = useTheme();
   const isDark = effectiveTheme === 'dark';
@@ -164,9 +170,12 @@ export function TerritoryMap({ customers, allCustomers }: TerritoryMapProps) {
         type: 'line',
         source: STATES_SOURCE,
         paint: {
-          'line-color': isDark ? '#5a4f51' : '#94a3b8', // warm gray dark / slate-400 light
-          'line-width': ['interpolate', ['linear'], ['zoom'], 3, 0.6, 6, 1, 10, 1.5],
-          'line-opacity': isDark ? 0.55 : 0.7,
+          // Slate-600 light / warm gray dark. Slightly darker + thicker on
+          // the colorful Bright basemap so state outlines still read
+          // clearly through the terrain shading and road colors.
+          'line-color': isDark ? '#5a4f51' : '#475569',
+          'line-width': ['interpolate', ['linear'], ['zoom'], 3, 0.8, 6, 1.4, 10, 2],
+          'line-opacity': isDark ? 0.55 : 0.75,
         },
       });
     }
@@ -464,9 +473,14 @@ export function TerritoryMap({ customers, allCustomers }: TerritoryMapProps) {
     };
   }, [leads, activeCustomerId, allCustomers, setActive, setHovered]);
 
-  // ---- 7. Reset view button ----
-  function onResetView() {
+  // ---- 7. Reset button: clear all selection AND return to default view ----
+  function onReset() {
     const map = mapRef.current;
+    // Clear both kinds of selection so the detail panel closes and the
+    // "Build campaign" sticky bar disappears — "Reset" should feel like a
+    // clean slate.
+    clearSelection();
+    clearCampaignSelection();
     if (!map) return;
     map.flyTo({ center: DEFAULT_CENTER, zoom: DEFAULT_ZOOM, duration: 600 });
   }
@@ -476,10 +490,11 @@ export function TerritoryMap({ customers, allCustomers }: TerritoryMapProps) {
       <div ref={containerRef} className="h-full w-full" aria-label="Customer map" role="region" />
       <button
         type="button"
-        onClick={onResetView}
+        onClick={onReset}
+        title="Clear selection and return to the default view"
         className="absolute right-3 top-3 z-10 rounded-md bg-white/95 px-3 py-1.5 text-xs font-medium text-slate-800 shadow ring-1 ring-slate-200 backdrop-blur transition-colors hover:bg-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-400 dark:bg-slate-900/95 dark:text-slate-100 dark:ring-slate-700 dark:hover:bg-slate-900"
       >
-        Reset view
+        Reset
       </button>
     </div>
   );
