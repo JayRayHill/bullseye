@@ -1,13 +1,13 @@
 // Landing screen shown when no dataset is loaded. Hero treatment: oversized
-// logo, tagline, dropzone + sample CTA side-by-side, privacy as quiet inline
-// bullets, and a 3-step "How it works" strip beneath.
+// logo, tagline, dropzone, privacy as quiet inline bullets, and a 3-step
+// "How it works" strip beneath.
 
 import { BullseyeLogo } from '../brand/BullseyeLogo';
 import { ThemeToggle } from '../brand/ThemeToggle';
 import { PrivacyBanner } from '../layout/PrivacyBanner';
 import { UploadDropzone } from '../upload/UploadDropzone';
 
-export function EmptyState({ onTrySample }: { onTrySample: () => void }) {
+export function EmptyState() {
   return (
     <div className="mx-auto flex w-full max-w-4xl flex-col gap-8 px-4 py-12 sm:py-16">
       {/* Theme toggle floats top-right so first-time visitors can choose
@@ -33,16 +33,7 @@ export function EmptyState({ onTrySample }: { onTrySample: () => void }) {
         </p>
       </header>
 
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-start">
-        <UploadDropzone />
-        <button
-          type="button"
-          onClick={onTrySample}
-          className="rounded-md border border-slate-300 bg-white px-5 py-3 text-sm font-medium text-slate-800 transition-colors hover:border-brand-400 hover:bg-brand-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-400 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:border-brand-600 dark:hover:bg-brand-900/30 sm:self-stretch"
-        >
-          Try sample data
-        </button>
-      </div>
+      <UploadDropzone />
 
       <PrivacyBanner variant="inline" />
 

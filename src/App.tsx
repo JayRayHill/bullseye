@@ -5,7 +5,7 @@
 // SentHistoryProvider sits between Campaign and Upload so the campaign drawer
 // and the leads list can both read/write the dedup log.
 
-import { useCallback, type ReactNode } from 'react';
+import { type ReactNode } from 'react';
 import { DataProvider, useData } from './context/DataContext';
 import { FiltersProvider } from './context/FiltersContext';
 import { SelectionProvider } from './context/SelectionContext';
@@ -13,13 +13,11 @@ import { SettingsProvider, useSettings } from './context/SettingsContext';
 import { CampaignProvider } from './context/CampaignContext';
 import { SentHistoryProvider } from './context/SentHistoryContext';
 import { ThemeProvider } from './context/ThemeContext';
-import { ToastProvider, useToast } from './components/common/ToastProvider';
-import { UploadProvider, useUpload } from './components/upload/UploadContext';
+import { ToastProvider } from './components/common/ToastProvider';
+import { UploadProvider } from './components/upload/UploadContext';
 import { ColumnMappingForm } from './components/upload/ColumnMappingForm';
 import { EmptyState } from './components/common/EmptyState';
 import { Shell } from './components/layout/Shell';
-import { loadSampleData, SAMPLE_MAPPING } from './lib/sample/loadSampleData';
-import { autoDetectColumns } from './lib/parsing/autoDetectColumns';
 
 function CampaignWithDefaultTemplate({ children }: { children: ReactNode }) {
   const { settings } = useSettings();
@@ -32,26 +30,6 @@ function CampaignWithDefaultTemplate({ children }: { children: ReactNode }) {
 
 function AppRoot() {
   const { dataset, hydrated } = useData();
-  const { startMapping } = useUpload();
-  const toast = useToast();
-
-  const onTrySample = useCallback(async () => {
-    try {
-      const { headers, rows } = await loadSampleData();
-      const auto = autoDetectColumns(headers, rows);
-      // Our authored mapping takes precedence; auto-detection fills any gaps.
-      const mapping = { ...auto, ...SAMPLE_MAPPING };
-      startMapping({
-        filename: 'sample-data.csv',
-        headers,
-        rows,
-        autoMapping: mapping,
-      });
-    } catch (e) {
-      const m = e instanceof Error ? e.message : 'Failed to load sample data.';
-      toast.show('error', m);
-    }
-  }, [startMapping, toast]);
 
   if (!hydrated) {
     return (
@@ -63,7 +41,7 @@ function AppRoot() {
 
   return (
     <>
-      {dataset ? <Shell /> : <EmptyState onTrySample={onTrySample} />}
+      {dataset ? <Shell /> : <EmptyState />}
       <ColumnMappingForm />
     </>
   );
