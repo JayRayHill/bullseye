@@ -4,12 +4,13 @@
 // list of the first N skipped rows in the upload summary.
 //
 // Deal classification rules:
-//   1. Row has a non-empty deal_close_date OR a positive deal_value → 'closed'
-//      (REAL LTV / deal_value > 0 means money changed hands → real customer)
-//   2. Else deal_status normalizes to 'lost' → 'lost'
-//   3. Else                                  → 'not_closed' (open lead)
-// All three signal columns are optional. If none are present, rows default to
-// 'not_closed'.
+//   1. Row has a positive deal_value / REAL LTV → 'closed' (money changed
+//      hands = real customer; this is the only signal that matters for "won")
+//   2. Else deal_status normalizes to 'lost'    → 'lost'
+//   3. Else                                     → 'not_closed' (open lead)
+//
+// deal_close_date is still parsed and displayed in the detail panel, but it
+// does NOT drive classification — too unreliable in real CRM exports.
 
 import type {
   ColumnMapping,
@@ -108,19 +109,21 @@ export function normalizeRows(
       return;
     }
 
-    // Read all classification signals up front so we can OR them together.
-    const closeDateParsed = parseDate(readField(row, mapping, 'deal_close_date'));
+    // Read classification signals up front.
     const dealValue = parseDealValue(readField(row, mapping, 'deal_value'));
     const rawStatus = readField(row, mapping, 'deal_status');
+    // deal_close_date is parsed below for display, but does NOT drive
+    // classification — REAL LTV / deal_value is the source of truth for
+    // "did money change hands".
+    const closeDateParsed = parseDate(readField(row, mapping, 'deal_close_date'));
 
     // Classification:
-    //  - non-empty close date OR positive deal_value (REAL LTV) → closed
+    //  - positive deal_value (REAL LTV) → closed
     //  - else status says 'lost' → lost
     //  - else → open lead
-    const hasCloseDate = !!(closeDateParsed.iso || closeDateParsed.raw);
     const hasPositiveLTV = dealValue !== undefined && dealValue > 0;
     let status: DealStatus;
-    if (hasCloseDate || hasPositiveLTV) {
+    if (hasPositiveLTV) {
       status = 'closed';
     } else if (isLostStatus(rawStatus)) {
       status = 'lost';

@@ -82,12 +82,12 @@ export function EmptyState({ onTrySample }: { onTrySample: () => void }) {
             and <code className="rounded bg-slate-100 px-1 py-0.5 dark:bg-slate-800">zip</code> (5-digit US).
           </p>
           <p>
-            <strong>How deals are classified:</strong> a row with a value in{' '}
-            <code className="rounded bg-slate-100 px-1 py-0.5 dark:bg-slate-800">deal_close_date</code> <em>or</em> a
-            positive <code className="rounded bg-slate-100 px-1 py-0.5 dark:bg-slate-800">deal_value</code> / REAL LTV is
-            a closed customer (green). Without either signal, rows where{' '}
+            <strong>How deals are classified:</strong> a row with a positive{' '}
+            <code className="rounded bg-slate-100 px-1 py-0.5 dark:bg-slate-800">deal_value</code> / REAL LTV is a
+            closed customer (green). Without one, rows where{' '}
             <code className="rounded bg-slate-100 px-1 py-0.5 dark:bg-slate-800">deal_status</code> is &ldquo;lost&rdquo;
-            show in gray; everything else is treated as an open lead (amber).
+            show in gray; everything else is an open lead (amber). Close date is shown in the
+            detail panel but doesn&rsquo;t affect classification.
           </p>
           <p>
             Recognized optional columns: deal_close_date, deal_status, contact_name, email, phone,

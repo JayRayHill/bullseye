@@ -389,7 +389,24 @@ export function TerritoryMap({ customers, allCustomers }: TerritoryMapProps) {
     leadMarkersRef.current.forEach((m) => m.remove());
     leadMarkersRef.current = [];
 
-    for (const lead of leads) {
+    // If the rep just clicked an amber lead, that lead becomes the active
+    // customer — but `useNearbyLeads` excludes the active customer from its
+    // returned list, so its marker would otherwise disappear from the map.
+    // Add a self-marker for the active not_closed customer so it stays
+    // visible at the center of attention.
+    const markersToShow = [...leads];
+    if (activeCustomerId) {
+      const activeCustomer = allCustomers.find((c) => c.id === activeCustomerId);
+      if (
+        activeCustomer &&
+        activeCustomer.deal_status === 'not_closed' &&
+        !markersToShow.some((l) => l.customer.id === activeCustomerId)
+      ) {
+        markersToShow.push({ customer: activeCustomer, distanceMiles: 0 });
+      }
+    }
+
+    for (const lead of markersToShow) {
       // CRITICAL: maplibregl.Marker writes `transform: translate(x, y)` on the
       // element it's given to position the marker on the map. If we set a
       // transform on the SAME element, we clobber the positioning and the pin
@@ -421,7 +438,7 @@ export function TerritoryMap({ customers, allCustomers }: TerritoryMapProps) {
       leadMarkersRef.current.forEach((m) => m.remove());
       leadMarkersRef.current = [];
     };
-  }, [leads, setActive, setHovered]);
+  }, [leads, activeCustomerId, allCustomers, setActive, setHovered]);
 
   // ---- 7. Reset view button ----
   function onResetView() {
