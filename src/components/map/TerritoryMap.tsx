@@ -390,24 +390,28 @@ export function TerritoryMap({ customers, allCustomers }: TerritoryMapProps) {
     leadMarkersRef.current = [];
 
     for (const lead of leads) {
-      // Wrap the SVG in a div so we can apply transform without touching the
-      // SVG itself (and so we never replace the element — Marker holds a
-      // reference, swapping outerHTML detaches us from it and the pin vanishes).
-      const el = document.createElement('div');
-      el.innerHTML = PIN_SVGS['pin-lead'];
-      el.style.cursor = 'pointer';
-      el.style.transformOrigin = 'center';
-      el.style.transition = 'transform 120ms ease-out';
-      el.addEventListener('mouseenter', () => {
-        el.style.transform = 'scale(1.18)';
+      // CRITICAL: maplibregl.Marker writes `transform: translate(x, y)` on the
+      // element it's given to position the marker on the map. If we set a
+      // transform on the SAME element, we clobber the positioning and the pin
+      // jumps to (0, 0). So we wrap the SVG in an inner div and only scale
+      // the inner — the outer element stays MapLibre's territory.
+      const outer = document.createElement('div');
+      const inner = document.createElement('div');
+      inner.innerHTML = PIN_SVGS['pin-lead'];
+      inner.style.cursor = 'pointer';
+      inner.style.transformOrigin = 'center';
+      inner.style.transition = 'transform 120ms ease-out';
+      outer.appendChild(inner);
+      inner.addEventListener('mouseenter', () => {
+        inner.style.transform = 'scale(1.18)';
         setHovered(lead.customer.id);
       });
-      el.addEventListener('mouseleave', () => {
-        el.style.transform = '';
+      inner.addEventListener('mouseleave', () => {
+        inner.style.transform = '';
         setHovered(null);
       });
-      el.addEventListener('click', () => setActive(lead.customer.id));
-      const marker = new maplibregl.Marker({ element: el, anchor: 'center' })
+      inner.addEventListener('click', () => setActive(lead.customer.id));
+      const marker = new maplibregl.Marker({ element: outer, anchor: 'center' })
         .setLngLat([lead.customer.lng, lead.customer.lat])
         .addTo(map);
       leadMarkersRef.current.push(marker);

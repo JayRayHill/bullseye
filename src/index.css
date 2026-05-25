@@ -23,6 +23,18 @@
   background: #1a1718; /* warm ink in dark */
 }
 
+/* In dark mode, warm-tint the cool Dark Matter tiles so they harmonize with
+   the brand-warm chrome (#231f20) instead of looking like a cool-blue island
+   floating in a warm room. The values are tuned to be subtle:
+   - sepia adds a warm cast, pulling everything toward brown
+   - hue-rotate shifts the warmed mid-tones slightly back toward neutral
+   - saturate reduces the resulting tan-y cast so it reads as warm-gray
+   Side effect: the brand-green bullseye pins shift very slightly toward
+   warm-green, but they remain unmistakably green. */
+.dark .maplibregl-canvas {
+  filter: sepia(0.35) hue-rotate(-12deg) saturate(0.8);
+}
+
 /* MapLibre's default attribution control is a bit loud; soften the badge and
    align it to our color tokens so it doesn't fight the rest of the UI. */
 .maplibregl-ctrl-attrib {
