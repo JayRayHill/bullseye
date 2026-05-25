@@ -38,7 +38,10 @@ export function UploadDropzone() {
           toast.show('error', 'The file looks empty or has no header row.');
           return;
         }
-        const autoMapping = autoDetectColumns(parsed.headers);
+        // Pass rows so auto-detect can score candidate columns by fill rate
+        // (handles HubSpot's contact+company joined exports where duplicate
+        // headers like "Postal Code" / "Postal Code_1" exist).
+        const autoMapping = autoDetectColumns(parsed.headers, parsed.rows);
         startMapping({
           filename: file.name,
           headers: parsed.headers,

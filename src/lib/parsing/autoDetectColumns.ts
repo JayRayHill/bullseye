@@ -1,9 +1,12 @@
 // Auto-detect the column mapping for an uploaded file. For each canonical field
-// we walk the list of aliases and return the first matching original header. Users
-// can override the result in the mapping UI; this just makes the common case zero
-// friction.
+// we walk the list of aliases and find candidate headers. When the uploaded
+// data has multiple columns matching the same alias set (common in HubSpot
+// CRM exports that join contact ↔ company — "Postal Code" + "Postal Code_1",
+// "Company Name" + "Company name", etc.), we sample a few hundred rows and
+// pick the column with the highest fill rate. Otherwise users see rows
+// silently skipped because auto-detect picked the mostly-empty column.
 
-import type { CanonicalField, ColumnMapping } from '../../types';
+import type { CanonicalField, ColumnMapping, RawRow } from '../../types';
 import { normalizeHeader } from '../../utils/fuzzyMatch';
 
 const ALIASES: Record<CanonicalField, string[]> = {
@@ -86,25 +89,64 @@ const ALIASES: Record<CanonicalField, string[]> = {
   ],
 };
 
-export function autoDetectColumns(headers: string[]): ColumnMapping {
+// Number of rows we look at when scoring candidate columns by fill rate.
+// 200 is more than enough to distinguish a mostly-empty column from a
+// mostly-populated one, even on huge exports.
+const FILL_RATE_SAMPLE = 200;
+
+export function autoDetectColumns(headers: string[], rows: RawRow[] = []): ColumnMapping {
   const mapping: ColumnMapping = {};
   const normalized = headers.map((h) => ({ raw: h, norm: normalizeHeader(h) }));
+  // Sample once and reuse across all fields.
+  const sample = rows.slice(0, Math.min(FILL_RATE_SAMPLE, rows.length));
+
+  /** Count non-empty values for a given header across the sample. */
+  const fillRate = (header: string): number => {
+    if (sample.length === 0) return 0;
+    let count = 0;
+    for (const row of sample) {
+      const v = row[header];
+      if (v != null && String(v).trim() !== '') count++;
+    }
+    return count;
+  };
+
   for (const field of Object.keys(ALIASES) as CanonicalField[]) {
     const aliases = ALIASES[field].map(normalizeHeader);
     const aliasSet = new Set(aliases);
-    // Prefer exact alias match in header order.
-    const exact = normalized.find((h) => aliasSet.has(h.norm));
-    if (exact) {
-      mapping[field] = exact.raw;
+    // Collect BOTH exact and substring candidates. The user's CRM might have
+    // a "Postal Code" column (exact match, contact's personal zip — often
+    // empty) and a "Postal Code_1" column (substring match because of the
+    // _1 suffix, but the company HQ zip with real values). We want to score
+    // them together by fill rate.
+    const exactMatches = normalized.filter((h) => aliasSet.has(h.norm));
+    const substringOnly = normalized.filter(
+      (h) => !aliasSet.has(h.norm) && aliases.some((a) => h.norm.includes(a))
+    );
+    // Exact matches come first → tiebreaker prefers exact over substring.
+    const candidates = [...exactMatches, ...substringOnly];
+
+    if (candidates.length === 0) {
+      mapping[field] = null;
       continue;
     }
-    // Fallback: substring match (e.g. "Account Name (Primary)" → business_name).
-    const contains = normalized.find((h) => aliases.some((a) => h.norm.includes(a)));
-    if (contains) {
-      mapping[field] = contains.raw;
-    } else {
-      mapping[field] = null;
+    if (candidates.length === 1 || sample.length === 0) {
+      mapping[field] = candidates[0].raw;
+      continue;
     }
+    // Multiple candidates — score each by how many of the sampled rows
+    // actually have a value in that column, pick the highest. Ties keep
+    // the earlier candidate (header order, with exact matches first).
+    let bestRaw = candidates[0].raw;
+    let bestFill = fillRate(bestRaw);
+    for (let i = 1; i < candidates.length; i++) {
+      const f = fillRate(candidates[i].raw);
+      if (f > bestFill) {
+        bestFill = f;
+        bestRaw = candidates[i].raw;
+      }
+    }
+    mapping[field] = bestRaw;
   }
   return mapping;
 }

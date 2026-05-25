@@ -38,7 +38,7 @@ function AppRoot() {
   const onTrySample = useCallback(async () => {
     try {
       const { headers, rows } = await loadSampleData();
-      const auto = autoDetectColumns(headers);
+      const auto = autoDetectColumns(headers, rows);
       // Our authored mapping takes precedence; auto-detection fills any gaps.
       const mapping = { ...auto, ...SAMPLE_MAPPING };
       startMapping({
