@@ -28,13 +28,23 @@ export default {
         closed: '#0c5f3f',
         lost: '#6b7280',
         lead: '#f59e0b',
-        // Override the two darkest slate stops with brand-warm equivalents so
-        // dark mode surfaces frame the map in a brand-related warm near-black
-        // (#231f20 is from the UNIQ Supply brand book) instead of fighting it
-        // with cool slate-blue. The middle slate values stay default so text
-        // and borders keep their existing relationships.
+        // Full warm-shifted slate scale. Tailwind's default slate is cool
+        // (hue ~215°) which reads as blue-ish — wrong for chrome built around
+        // the UNIQ Supply warm dark (#231f20). These values are tuned to the
+        // same warm hue family (~20°), keeping the luminance ramp Tailwind
+        // expects so all the existing slate-xxx classes still create their
+        // usual contrast relationships, just without the cool cast on input
+        // borders, slider tracks, and divider lines.
         slate: {
-          800: '#2c2728', // borders, subtle elevation
+          50: '#faf9f8',
+          100: '#f3f1f0',
+          200: '#e4e1df',
+          300: '#cfcbc9',
+          400: '#a39e9c',
+          500: '#737070',
+          600: '#525050', // mid-tone, used for state-border lines too
+          700: '#3a3837',
+          800: '#2c2728',
           900: '#231f20', // surfaces (cards, header, drawer)
           950: '#1a1718', // canvas / body background
         },

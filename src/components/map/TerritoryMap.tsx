@@ -170,12 +170,12 @@ export function TerritoryMap({ customers, allCustomers }: TerritoryMapProps) {
         type: 'line',
         source: STATES_SOURCE,
         paint: {
-          // Slate-600 light / warm gray dark. Slightly darker + thicker on
-          // the colorful Bright basemap so state outlines still read
-          // clearly through the terrain shading and road colors.
-          'line-color': isDark ? '#5a4f51' : '#475569',
+          // Pulls from the warm slate scale (slate-600 / slate-500) so the
+          // map outlines share a color family with the rest of the chrome —
+          // input borders, slider tracks, dividers.
+          'line-color': isDark ? '#737070' : '#525050',
           'line-width': ['interpolate', ['linear'], ['zoom'], 3, 0.8, 6, 1.4, 10, 2],
-          'line-opacity': isDark ? 0.55 : 0.75,
+          'line-opacity': isDark ? 0.65 : 0.75,
         },
       });
     }
