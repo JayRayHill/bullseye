@@ -6,8 +6,15 @@
 //   - Feature-state hover/active swaps are a single GPU draw, not React renders
 //
 // Tile style: OpenFreeMap (free, no API key, attribution-ready).
-//   - Light: positron
-//   - Dark:  dark
+//   - Light: liberty — colorful OSM-style basemap (yellow highways, blue
+//            water, green parks). Closer to a "classic map" feel than
+//            positron, which is intentionally restrained for data viz.
+//   - Dark:  dark — monochrome dark. (OpenFreeMap doesn't currently offer a
+//            colorful dark variant; if reps want more color in dark mode,
+//            we can switch to a paid provider like MapTiler.)
+// Other OpenFreeMap styles available with a 1-line URL swap:
+//   - positron   (cleaner, more minimal — what we used before)
+//   - bright     (similar to liberty, slightly different palette)
 // To swap to MapTiler later, just point STYLE_URL_* at their style endpoints
 // (which take ?key=YOUR_KEY in the URL).
 //
@@ -40,7 +47,7 @@ const DEFAULT_CENTER: [number, number] = [-98.35, 39.5]; // MapLibre uses [lng, 
 const DEFAULT_ZOOM = 3.5;
 
 // OpenFreeMap styles. Free, no API key. Attribution baked into the style.
-const STYLE_LIGHT = 'https://tiles.openfreemap.org/styles/positron';
+const STYLE_LIGHT = 'https://tiles.openfreemap.org/styles/liberty';
 const STYLE_DARK = 'https://tiles.openfreemap.org/styles/dark';
 
 const CUSTOMERS_SOURCE = 'customers';
@@ -198,7 +205,10 @@ export function TerritoryMap({ customers, allCustomers }: TerritoryMapProps) {
         filter: ['has', 'point_count'],
         layout: {
           'text-field': ['get', 'point_count_abbreviated'],
-          'text-font': ['Noto Sans Bold'],
+          // Font list is tried in order; whichever the active style's glyphs
+          // endpoint provides first wins. Liberty ships Noto Sans, Positron
+          // ships Noto Sans Bold too — keep both as fallbacks.
+          'text-font': ['Noto Sans Bold', 'Noto Sans Regular'],
           'text-size': 13,
         },
         paint: { 'text-color': '#ffffff' },
@@ -210,6 +220,11 @@ export function TerritoryMap({ customers, allCustomers }: TerritoryMapProps) {
       // is a layout). We drive the icon entirely by the static `status`
       // property; the hover affordance is the cursor change + popup, and the
       // active affordance is the auto flyTo + detail panel opening.
+      //
+      // Anchor: bullseye is a symmetric circle so center is correct. The lost
+      // teardrop's point is at the bottom of the SVG, so we anchor at bottom
+      // so the point lands on the lat/lng (conventional pin behavior). Mixing
+      // anchors in one layer requires a case expression.
       const lostIcon = isDark ? 'pin-lost-dark' : 'pin-lost';
       map.addLayer({
         id: CUSTOMER_LAYER,
@@ -223,8 +238,13 @@ export function TerritoryMap({ customers, allCustomers }: TerritoryMapProps) {
             lostIcon,
             'pin-closed',
           ],
+          'icon-anchor': [
+            'case',
+            ['==', ['get', 'status'], 'lost'],
+            'bottom',
+            'center',
+          ],
           'icon-allow-overlap': true,
-          'icon-anchor': 'center',
         },
       });
     }
@@ -428,7 +448,11 @@ export function TerritoryMap({ customers, allCustomers }: TerritoryMapProps) {
         setHovered(null);
       });
       inner.addEventListener('click', () => setActive(lead.customer.id));
-      const marker = new maplibregl.Marker({ element: outer, anchor: 'center' })
+      // Teardrop pins anchor at their POINT (bottom-center of the SVG) so the
+      // tip sits on the lat/lng — like every other map app. With 'center'
+      // anchoring the wide top of the teardrop hung above the location and
+      // got clipped near the viewport edge.
+      const marker = new maplibregl.Marker({ element: outer, anchor: 'bottom' })
         .setLngLat([lead.customer.lng, lead.customer.lat])
         .addTo(map);
       leadMarkersRef.current.push(marker);
