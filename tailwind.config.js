@@ -28,6 +28,16 @@ export default {
         closed: '#0c5f3f',
         lost: '#6b7280',
         lead: '#f59e0b',
+        // Override the two darkest slate stops with brand-warm equivalents so
+        // dark mode surfaces frame the map in a brand-related warm near-black
+        // (#231f20 is from the UNIQ Supply brand book) instead of fighting it
+        // with cool slate-blue. The middle slate values stay default so text
+        // and borders keep their existing relationships.
+        slate: {
+          800: '#2c2728', // borders, subtle elevation
+          900: '#231f20', // surfaces (cards, header, drawer)
+          950: '#1a1718', // canvas / body background
+        },
       },
     },
   },

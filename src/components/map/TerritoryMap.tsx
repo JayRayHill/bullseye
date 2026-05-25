@@ -44,6 +44,8 @@ const STYLE_LIGHT = 'https://tiles.openfreemap.org/styles/positron';
 const STYLE_DARK = 'https://tiles.openfreemap.org/styles/dark';
 
 const CUSTOMERS_SOURCE = 'customers';
+const STATES_SOURCE = 'us-states';
+const STATES_LAYER = 'us-state-borders';
 const CLUSTER_LAYER = 'cluster-circles';
 const CLUSTER_COUNT_LAYER = 'cluster-count';
 const CUSTOMER_LAYER = 'customer-pins';
@@ -139,6 +141,28 @@ export function TerritoryMap({ customers, allCustomers }: TerritoryMapProps) {
   async function hydrateMap(map: MapLibreMap) {
     if (styleLoadedRef.current) return;
     await loadPinImages(map);
+
+    // US state borders overlay — Positron tiles' state lines are nearly
+    // invisible, especially in light mode. Adding our own thin line layer
+    // sits between the basemap and the customer pins.
+    if (!map.getSource(STATES_SOURCE)) {
+      map.addSource(STATES_SOURCE, {
+        type: 'geojson',
+        data: '/us-states.geojson',
+      });
+    }
+    if (!map.getLayer(STATES_LAYER)) {
+      map.addLayer({
+        id: STATES_LAYER,
+        type: 'line',
+        source: STATES_SOURCE,
+        paint: {
+          'line-color': isDark ? '#5a4f51' : '#94a3b8', // warm gray dark / slate-400 light
+          'line-width': ['interpolate', ['linear'], ['zoom'], 3, 0.6, 6, 1, 10, 1.5],
+          'line-opacity': isDark ? 0.55 : 0.7,
+        },
+      });
+    }
 
     if (!map.getSource(CUSTOMERS_SOURCE)) {
       map.addSource(CUSTOMERS_SOURCE, {
@@ -366,17 +390,20 @@ export function TerritoryMap({ customers, allCustomers }: TerritoryMapProps) {
     leadMarkersRef.current = [];
 
     for (const lead of leads) {
-      const wrapper = document.createElement('div');
-      wrapper.innerHTML = PIN_SVGS['pin-lead'];
-      const el = wrapper.firstElementChild as HTMLElement | null;
-      if (!el) continue;
+      // Wrap the SVG in a div so we can apply transform without touching the
+      // SVG itself (and so we never replace the element — Marker holds a
+      // reference, swapping outerHTML detaches us from it and the pin vanishes).
+      const el = document.createElement('div');
+      el.innerHTML = PIN_SVGS['pin-lead'];
       el.style.cursor = 'pointer';
+      el.style.transformOrigin = 'center';
       el.style.transition = 'transform 120ms ease-out';
       el.addEventListener('mouseenter', () => {
-        el.outerHTML = PIN_SVGS['pin-lead-hover'];
+        el.style.transform = 'scale(1.18)';
         setHovered(lead.customer.id);
       });
       el.addEventListener('mouseleave', () => {
+        el.style.transform = '';
         setHovered(null);
       });
       el.addEventListener('click', () => setActive(lead.customer.id));
