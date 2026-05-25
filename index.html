@@ -8,6 +8,23 @@
     <meta name="theme-color" content="#0c5f3f" media="(prefers-color-scheme: light)" />
     <meta name="theme-color" content="#073a27" media="(prefers-color-scheme: dark)" />
     <title>Bullseye Offense</title>
+    <!--
+      Theme bootstrap. Runs synchronously before React mounts so the right
+      `dark` class is on <html> from the very first paint — no flash of the
+      wrong theme. Mirrors the logic in src/context/ThemeContext.tsx.
+    -->
+    <script>
+      (function () {
+        try {
+          var saved = localStorage.getItem('bullseye:theme'); // 'light' | 'dark' | 'system' | null
+          var resolved = saved;
+          if (saved !== 'light' && saved !== 'dark') {
+            resolved = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+          }
+          if (resolved === 'dark') document.documentElement.classList.add('dark');
+        } catch (_) { /* localStorage unavailable — fall through to light */ }
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>

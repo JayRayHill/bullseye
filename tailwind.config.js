@@ -1,10 +1,11 @@
 /** @type {import('tailwindcss').Config} */
 export default {
   content: ['./index.html', './src/**/*.{ts,tsx}'],
-  // Dark mode follows the user's OS preference. If we add a manual toggle
-  // later, flip this to 'class' and add a small bootstrap script to read
-  // the persisted preference.
-  darkMode: 'media',
+  // Dark mode is toggled by the `dark` class on <html>. ThemeContext writes
+  // the class based on the user's saved preference (light / dark / system),
+  // and a tiny inline script in index.html applies it before React mounts
+  // so we never flash the wrong theme.
+  darkMode: 'class',
   theme: {
     extend: {
       colors: {

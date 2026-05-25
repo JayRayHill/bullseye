@@ -33,7 +33,7 @@ import type { Customer } from '../../types';
 import { useSelection } from '../../context/SelectionContext';
 import { useNearbyLeads } from '../../hooks/useNearbyLeads';
 import { useFilters } from '../../context/FiltersContext';
-import { usePrefersDark } from '../../hooks/usePrefersDark';
+import { useTheme } from '../../context/ThemeContext';
 import { loadPinImages, PIN_SVGS } from './icons';
 
 const DEFAULT_CENTER: [number, number] = [-98.35, 39.5]; // MapLibre uses [lng, lat]
@@ -60,7 +60,8 @@ export function TerritoryMap({ customers, allCustomers }: TerritoryMapProps) {
   const { filters } = useFilters();
   const { activeCustomerId, hoveredId, setActive, setHovered } = useSelection();
   const { leads } = useNearbyLeads(allCustomers, activeCustomerId, filters.radiusMiles);
-  const isDark = usePrefersDark();
+  const { effectiveTheme } = useTheme();
+  const isDark = effectiveTheme === 'dark';
 
   const containerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<MapLibreMap | null>(null);

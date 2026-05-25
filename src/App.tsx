@@ -12,6 +12,7 @@ import { SelectionProvider } from './context/SelectionContext';
 import { SettingsProvider, useSettings } from './context/SettingsContext';
 import { CampaignProvider } from './context/CampaignContext';
 import { SentHistoryProvider } from './context/SentHistoryContext';
+import { ThemeProvider } from './context/ThemeContext';
 import { ToastProvider, useToast } from './components/common/ToastProvider';
 import { UploadProvider, useUpload } from './components/upload/UploadContext';
 import { ColumnMappingForm } from './components/upload/ColumnMappingForm';
@@ -70,22 +71,24 @@ function AppRoot() {
 
 export default function App() {
   return (
-    <ToastProvider>
-      <DataProvider>
-        <FiltersProvider>
-          <SelectionProvider>
-            <SettingsProvider>
-              <CampaignWithDefaultTemplate>
-                <SentHistoryProvider>
-                  <UploadProvider>
-                    <AppRoot />
-                  </UploadProvider>
-                </SentHistoryProvider>
-              </CampaignWithDefaultTemplate>
-            </SettingsProvider>
-          </SelectionProvider>
-        </FiltersProvider>
-      </DataProvider>
-    </ToastProvider>
+    <ThemeProvider>
+      <ToastProvider>
+        <DataProvider>
+          <FiltersProvider>
+            <SelectionProvider>
+              <SettingsProvider>
+                <CampaignWithDefaultTemplate>
+                  <SentHistoryProvider>
+                    <UploadProvider>
+                      <AppRoot />
+                    </UploadProvider>
+                  </SentHistoryProvider>
+                </CampaignWithDefaultTemplate>
+              </SettingsProvider>
+            </SelectionProvider>
+          </FiltersProvider>
+        </DataProvider>
+      </ToastProvider>
+    </ThemeProvider>
   );
 }

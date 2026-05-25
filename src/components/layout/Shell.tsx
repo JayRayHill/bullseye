@@ -28,6 +28,7 @@ import { SettingsDialog } from '../settings/SettingsDialog';
 import { CampaignDrawer } from '../campaign/CampaignDrawer';
 import { BullseyeLogo } from '../brand/BullseyeLogo';
 import { StatsStrip } from '../brand/StatsStrip';
+import { ThemeToggle } from '../brand/ThemeToggle';
 
 export function Shell() {
   const { dataset, uploadErrors, clearDataset } = useData();
@@ -75,6 +76,7 @@ export function Shell() {
           </div>
           <div className="flex flex-wrap items-center gap-3">
             <RadiusSlider />
+            <ThemeToggle />
             <SettingsButton onClick={() => setSettingsOpen(true)} />
             <button
               type="button"

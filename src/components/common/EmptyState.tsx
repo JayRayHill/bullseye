@@ -3,12 +3,19 @@
 // bullets, and a 3-step "How it works" strip beneath.
 
 import { BullseyeLogo } from '../brand/BullseyeLogo';
+import { ThemeToggle } from '../brand/ThemeToggle';
 import { PrivacyBanner } from '../layout/PrivacyBanner';
 import { UploadDropzone } from '../upload/UploadDropzone';
 
 export function EmptyState({ onTrySample }: { onTrySample: () => void }) {
   return (
     <div className="mx-auto flex w-full max-w-4xl flex-col gap-8 px-4 py-12 sm:py-16">
+      {/* Theme toggle floats top-right so first-time visitors can choose
+          before loading any data. Once the Shell is mounted, the toggle
+          lives in the main header instead. */}
+      <div className="flex justify-end">
+        <ThemeToggle />
+      </div>
       <header className="flex flex-col items-center gap-4 text-center">
         <BullseyeLogo size={64} />
         <div>
