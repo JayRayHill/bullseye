@@ -451,10 +451,36 @@ export function TerritoryMap({ customers, allCustomers }: TerritoryMapProps) {
       inner.addEventListener('mouseenter', () => {
         inner.style.transform = 'scale(1.18)';
         setHovered(lead.customer.id);
+        // Show the same name/city/status tooltip the bullseye pins show.
+        // Offset 36 puts the popup above the pin's TOP (pin is anchored at
+        // its bottom point, extends ~32px up, +4 for breathing room).
+        if (popupRef.current) popupRef.current.remove();
+        const cityState = [lead.customer.city, lead.customer.state]
+          .filter(Boolean)
+          .join(', ');
+        const html = `
+          <div style="font-size: 12px; line-height: 1.4;">
+            <div style="font-weight: 600;">${escapeHtml(lead.customer.business_name)}</div>
+            ${cityState ? `<div style="color: #475569;">${escapeHtml(cityState)}</div>` : ''}
+            <div style="color: #64748b;">Open</div>
+          </div>`;
+        popupRef.current = new maplibregl.Popup({
+          closeButton: false,
+          closeOnClick: false,
+          offset: 36,
+          className: 'stm-popup',
+        })
+          .setLngLat([lead.customer.lng, lead.customer.lat])
+          .setHTML(html)
+          .addTo(map);
       });
       inner.addEventListener('mouseleave', () => {
         inner.style.transform = '';
         setHovered(null);
+        if (popupRef.current) {
+          popupRef.current.remove();
+          popupRef.current = null;
+        }
       });
       inner.addEventListener('click', () => setActive(lead.customer.id));
       // Teardrop pins anchor at their POINT (bottom-center of the SVG) so the
