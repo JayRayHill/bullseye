@@ -3,14 +3,17 @@
 // captured as an UploadError; the user sees aggregate counts and (optionally) a
 // list of the first N skipped rows in the upload summary.
 //
-// Deal classification rules:
-//   1. Row has a positive deal_value / REAL LTV → 'closed' (money changed
-//      hands = real customer; this is the only signal that matters for "won")
-//   2. Else deal_status normalizes to 'lost'    → 'lost'
-//   3. Else                                     → 'not_closed' (open lead)
+// Deal classification — binary rule:
+//   - Row has a positive deal_value / REAL LTV → 'closed' (won customer)
+//   - Else                                     → 'not_closed' (open deal —
+//     a form fill / prospect we haven't converted yet)
 //
 // deal_close_date is still parsed and displayed in the detail panel, but it
 // does NOT drive classification — too unreliable in real CRM exports.
+//
+// The 'lost' status is retained in the type system so historical data with
+// explicit lost markings can still be represented if a future classifier
+// change brings it back, but no rule here currently produces 'lost'.
 
 import type {
   ColumnMapping,
@@ -22,7 +25,6 @@ import type {
 } from '../../types';
 import type { ZipCoordMap } from '../../hooks/useZipCoords';
 import { jitterCoord } from '../geo/jitterCoord';
-import { isLostStatus } from './normalizeStatus';
 import { stableHash } from '../../utils/fuzzyMatch';
 
 function readField(row: RawRow, mapping: ColumnMapping, key: keyof ColumnMapping): string {
@@ -109,27 +111,15 @@ export function normalizeRows(
       return;
     }
 
-    // Read classification signals up front.
+    // Read classification signals up front. Only deal_value drives status;
+    // close date and deal_status are parsed for display in the detail panel
+    // but don't change the pin color.
     const dealValue = parseDealValue(readField(row, mapping, 'deal_value'));
-    const rawStatus = readField(row, mapping, 'deal_status');
-    // deal_close_date is parsed below for display, but does NOT drive
-    // classification — REAL LTV / deal_value is the source of truth for
-    // "did money change hands".
     const closeDateParsed = parseDate(readField(row, mapping, 'deal_close_date'));
 
-    // Classification:
-    //  - positive deal_value (REAL LTV) → closed
-    //  - else status says 'lost' → lost
-    //  - else → open lead
+    // Binary classification: has REAL LTV → closed, else open deal.
     const hasPositiveLTV = dealValue !== undefined && dealValue > 0;
-    let status: DealStatus;
-    if (hasPositiveLTV) {
-      status = 'closed';
-    } else if (isLostStatus(rawStatus)) {
-      status = 'lost';
-    } else {
-      status = 'not_closed';
-    }
+    const status: DealStatus = hasPositiveLTV ? 'closed' : 'not_closed';
 
     const occurrence = sameZipCounter.get(zip) ?? 0;
     const [lat, lng] = jitterCoord(coord[0], coord[1], occurrence);
@@ -165,8 +155,9 @@ export function normalizeRows(
     });
 
     if (status === 'closed') closed += 1;
-    else if (status === 'lost') lost += 1;
     else notClosed += 1;
+    // `lost` counter intentionally left at 0 — current classifier never
+    // produces 'lost'. Retained on the type so future rules can.
   });
 
   return {

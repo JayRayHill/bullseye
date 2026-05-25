@@ -47,14 +47,14 @@ The map shows three kinds of customers, classified from two columns:
    Money in the column means money changed hands. Header synonyms
    recognized: "deal value", "amount", "value", "revenue", "ARR", "MRR",
    "LTV", "REAL LTV", "lifetime value", "contract value".
-2. **Lost (gray pin)** — no positive value AND `deal_status` matches a lost
-   token ("lost", "closed lost", "dead").
-3. **Open lead (amber pin)** — everything else.
+2. **Open deal (amber pin)** — everything else. A form fill / prospect
+   without a confirmed value, i.e. someone we haven't closed yet.
 
 `deal_value`, `deal_status`, and `deal_close_date` are all optional.
-**`deal_close_date` is shown in the detail panel for context but isn't used
-for classification** — close-date fields are unreliable in real CRM exports.
-If no value column is mapped, every row becomes an open lead.
+**`deal_status` and `deal_close_date` show in the detail panel for context
+but don't affect pin color** — value is the only signal that determines
+"are they a customer or not". If no value column is mapped, every row
+becomes an open deal.
 
 Pins on the map:
 

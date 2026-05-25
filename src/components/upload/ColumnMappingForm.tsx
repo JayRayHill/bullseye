@@ -147,9 +147,9 @@ export function ColumnMappingForm() {
 
           <p className="mt-3 rounded-md bg-brand-50 px-3 py-2 text-xs text-brand-900 dark:bg-brand-900/30 dark:text-brand-100">
             <strong className="font-semibold">Classification:</strong> a row with a positive deal
-            value / REAL LTV is a closed customer (green). Without one, rows marked
-            &ldquo;lost&rdquo; show in gray; everything else is an open lead (amber). Close date
-            is shown in the detail panel but isn&rsquo;t used to classify.
+            value / REAL LTV is a closed customer (green). Everything else is treated as an open
+            deal (amber) — a form fill we haven&rsquo;t closed yet. Close date and deal status are
+            shown in the detail panel for context but don&rsquo;t change the pin color.
           </p>
 
           <details className="mt-5 rounded-lg border border-slate-200 p-3 dark:border-slate-800" open>

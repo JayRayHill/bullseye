@@ -10,7 +10,9 @@ import type { DealStatus } from '../../types';
 import { useData } from '../../context/DataContext';
 
 // Status chips reuse the semantic pin palette so the filter visually maps to
-// the map. Active state adds a thick brand-tinted ring.
+// the map. Active state adds a thick brand-tinted ring. The Lost chip only
+// renders when the loaded dataset actually contains lost rows — the current
+// classifier never produces 'lost', so it stays hidden unless future data has it.
 const STATUS_CHIPS: { value: DealStatus; label: string; idle: string; active: string }[] = [
   {
     value: 'closed',
@@ -66,6 +68,9 @@ export function FilterBar() {
 
       <div className="flex items-center gap-1" role="group" aria-label="Deal status filter">
         {STATUS_CHIPS.map((chip) => {
+          // Hide the Lost chip when the dataset has no lost rows. Avoids
+          // showing a filter category that can never apply.
+          if (chip.value === 'lost' && (dataset?.totals.lost ?? 0) === 0) return null;
           const active = filters.statuses.includes(chip.value);
           return (
             <button

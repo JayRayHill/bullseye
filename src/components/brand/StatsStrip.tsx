@@ -14,8 +14,8 @@ export function StatsStrip({ dataset }: { dataset: Dataset }) {
         </span>
         <Dot />
         <Chip color="brand">{totals.closed} closed</Chip>
-        <Chip color="lost">{totals.lost} lost</Chip>
-        <Chip color="lead">{totals.notClosed} open lead{totals.notClosed === 1 ? '' : 's'}</Chip>
+        <Chip color="lead">{totals.notClosed} open deal{totals.notClosed === 1 ? '' : 's'}</Chip>
+        {totals.lost > 0 ? <Chip color="lost">{totals.lost} lost</Chip> : null}
         {totals.invalid > 0 ? <Chip color="red">{totals.invalid} skipped</Chip> : null}
         <span className="ml-auto truncate text-slate-500 dark:text-slate-500">
           from <span className="font-medium">{dataset.sourceFilename}</span>
