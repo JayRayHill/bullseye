@@ -97,3 +97,64 @@ export const DEFAULT_FILTERS: Filters = {
   dealValueRange: [null, null],
   radiusMiles: 50,
 };
+
+// ---------------------------------------------------------------------------
+// Phase 2: Outreach Campaign types
+// ---------------------------------------------------------------------------
+
+/** Rep settings persisted in IndexedDB. Used to fill {{rep_first_name}} and
+ *  {{rep_signature}} merge fields in outbound campaign emails. */
+export interface RepSettings {
+  firstName: string;
+  /** Free-text signature block. Newlines preserved verbatim in email body. */
+  signature: string;
+  /** Which template the drawer pre-selects. Defaults to the first template
+   *  when empty. */
+  defaultTemplateId: string;
+}
+
+export const DEFAULT_REP_SETTINGS: RepSettings = {
+  firstName: '',
+  signature: '',
+  defaultTemplateId: 'warm-neighbor',
+};
+
+/** A baked-in email template the rep can pick from. Tokens like
+ *  {{lead_first_name}} are resolved by fillMergeFields at render time. */
+export interface EmailTemplate {
+  id: string;
+  /** Short display label for the template tab. */
+  name: string;
+  /** One-line description shown under the tab name. */
+  blurb: string;
+  subject: string;
+  body: string;
+}
+
+/** Per-session campaign state. NOT persisted — campaigns are ephemeral. */
+export interface CampaignState {
+  selectedLeadIds: Set<string>;
+  activeTemplateId: string;
+  /** Optional overrides if the rep tweaked the template in the drawer. */
+  customizedSubject: string | null;
+  customizedBody: string | null;
+}
+
+/** Phase 2.5: persisted per-browser record that a given lead has been emailed.
+ *  Used to hard-block re-emailing within the cooldown window. Identity is
+ *  computed by leadIdentity(customer) — see src/lib/email/leadIdentity.ts. */
+export interface SentHistoryEntry {
+  identity: string;
+  /** ISO timestamp of when the send was initiated. */
+  emailedAt: string;
+  /** Closed customer this lead was emailed about — for display in Settings. */
+  anchorCustomerName: string;
+  /** Lead's business name at the time of send — for display in Settings. */
+  leadBusinessName: string;
+  /** Template id used at the time of send. */
+  templateId: string;
+  sendMethod: 'gmail' | 'mailto';
+}
+
+/** Sent-history map, keyed by stable lead identity. Persisted in IndexedDB. */
+export type SentHistory = Record<string, SentHistoryEntry>;

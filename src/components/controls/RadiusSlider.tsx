@@ -7,7 +7,7 @@ import { useFilters } from '../../context/FiltersContext';
 export function RadiusSlider() {
   const { filters, setRadiusMiles } = useFilters();
   return (
-    <label className="flex items-center gap-3 text-sm text-slate-800">
+    <label className="flex items-center gap-3 text-sm text-slate-800 dark:text-slate-200">
       <span className="whitespace-nowrap">
         Radius: <span className="font-semibold">{filters.radiusMiles} mi</span>
       </span>
@@ -19,7 +19,7 @@ export function RadiusSlider() {
         value={filters.radiusMiles}
         onChange={(e) => setRadiusMiles(Number(e.target.value))}
         aria-valuetext={`${filters.radiusMiles} miles`}
-        className="h-2 w-44 cursor-pointer appearance-none rounded-full bg-slate-200 accent-blue-600"
+        className="h-2 w-44 cursor-pointer appearance-none rounded-full bg-slate-200 accent-brand-700 dark:bg-slate-700 dark:accent-brand-500"
       />
     </label>
   );

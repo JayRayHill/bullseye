@@ -4,25 +4,31 @@
 // nullable behavior.
 
 import { useMemo } from 'react';
+import clsx from 'clsx';
 import { useFilters } from '../../context/FiltersContext';
 import type { DealStatus } from '../../types';
 import { useData } from '../../context/DataContext';
 
-const STATUS_CHIPS: { value: DealStatus; label: string; classes: string }[] = [
+// Status chips reuse the semantic pin palette so the filter visually maps to
+// the map. Active state adds a thick brand-tinted ring.
+const STATUS_CHIPS: { value: DealStatus; label: string; idle: string; active: string }[] = [
   {
     value: 'closed',
     label: 'Closed',
-    classes: 'bg-emerald-100 text-emerald-900 hover:bg-emerald-200',
+    idle: 'bg-brand-50 text-brand-900 hover:bg-brand-100 dark:bg-brand-900/30 dark:text-brand-100 dark:hover:bg-brand-900/50',
+    active: 'bg-brand-700 text-white shadow-sm dark:bg-brand-500',
   },
   {
     value: 'not_closed',
     label: 'Open',
-    classes: 'bg-amber-100 text-amber-900 hover:bg-amber-200',
+    idle: 'bg-amber-100 text-amber-900 hover:bg-amber-200 dark:bg-amber-900/30 dark:text-amber-100 dark:hover:bg-amber-900/50',
+    active: 'bg-amber-500 text-white shadow-sm dark:bg-amber-400 dark:text-slate-900',
   },
   {
     value: 'lost',
     label: 'Lost',
-    classes: 'bg-slate-200 text-slate-700 hover:bg-slate-300',
+    idle: 'bg-slate-200 text-slate-700 hover:bg-slate-300 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700',
+    active: 'bg-slate-700 text-white dark:bg-slate-500 dark:text-slate-100',
   },
 ];
 
@@ -48,14 +54,14 @@ export function FilterBar() {
     filters.dealValueRange[1] !== null;
 
   return (
-    <div className="flex flex-wrap items-center gap-3 rounded-xl border border-slate-200 bg-white p-3 shadow-sm">
+    <div className="flex flex-wrap items-center gap-3 rounded-xl border border-slate-200 bg-white p-3 shadow-sm dark:border-slate-800 dark:bg-slate-900">
       <input
         type="search"
         value={filters.search}
         onChange={(e) => setSearch(e.target.value)}
         placeholder="Search business or city"
         aria-label="Search by business name or city"
-        className="min-w-[14rem] flex-1 rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+        className="min-w-[14rem] flex-1 rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm shadow-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:placeholder:text-slate-500"
       />
 
       <div className="flex items-center gap-1" role="group" aria-label="Deal status filter">
@@ -68,10 +74,10 @@ export function FilterBar() {
               role="switch"
               aria-checked={active}
               onClick={() => toggleStatus(chip.value)}
-              className={
-                'rounded-full px-3 py-1 text-xs font-medium transition ' +
-                (active ? `ring-2 ring-offset-1 ${chip.classes} ring-current` : chip.classes)
-              }
+              className={clsx(
+                'rounded-full px-3 py-1 text-xs font-medium transition-colors',
+                active ? chip.active : chip.idle
+              )}
             >
               {chip.label}
             </button>
@@ -81,10 +87,10 @@ export function FilterBar() {
 
       {availableStates.length > 0 ? (
         <details className="relative">
-          <summary className="cursor-pointer list-none rounded-full bg-slate-100 px-3 py-1 text-xs font-medium text-slate-700 hover:bg-slate-200">
+          <summary className="cursor-pointer list-none rounded-full bg-slate-100 px-3 py-1 text-xs font-medium text-slate-700 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700">
             States {filters.states.length ? `(${filters.states.length})` : ''}
           </summary>
-          <div className="absolute z-30 mt-2 grid max-h-64 w-48 grid-cols-3 gap-1 overflow-auto rounded-lg border border-slate-200 bg-white p-2 text-xs shadow-lg">
+          <div className="absolute z-30 mt-2 grid max-h-64 w-48 grid-cols-3 gap-1 overflow-auto rounded-lg border border-slate-200 bg-white p-2 text-xs shadow-lg dark:border-slate-700 dark:bg-slate-900">
             {availableStates.map((st) => {
               const active = filters.states.includes(st);
               return (
@@ -94,10 +100,12 @@ export function FilterBar() {
                   role="switch"
                   aria-checked={active}
                   onClick={() => toggleState(st)}
-                  className={
-                    'rounded px-2 py-1 text-center ' +
-                    (active ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-700 hover:bg-slate-200')
-                  }
+                  className={clsx(
+                    'rounded px-2 py-1 text-center transition-colors',
+                    active
+                      ? 'bg-brand-700 text-white dark:bg-brand-500'
+                      : 'bg-slate-100 text-slate-700 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700'
+                  )}
                 >
                   {st}
                 </button>
@@ -107,7 +115,7 @@ export function FilterBar() {
         </details>
       ) : null}
 
-      <div className="flex items-center gap-1 text-xs text-slate-700">
+      <div className="flex items-center gap-1 text-xs text-slate-700 dark:text-slate-300">
         <span>$ min</span>
         <input
           type="number"
@@ -121,7 +129,7 @@ export function FilterBar() {
             ])
           }
           aria-label="Minimum deal value"
-          className="w-20 rounded-md border border-slate-300 px-2 py-1 text-xs"
+          className="w-20 rounded-md border border-slate-300 bg-white px-2 py-1 text-xs focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100"
         />
         <span>max</span>
         <input
@@ -136,7 +144,7 @@ export function FilterBar() {
             ])
           }
           aria-label="Maximum deal value"
-          className="w-20 rounded-md border border-slate-300 px-2 py-1 text-xs"
+          className="w-20 rounded-md border border-slate-300 bg-white px-2 py-1 text-xs focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100"
         />
       </div>
 
@@ -144,7 +152,7 @@ export function FilterBar() {
         <button
           type="button"
           onClick={resetFilters}
-          className="text-xs text-slate-600 underline hover:text-slate-900"
+          className="text-xs text-slate-600 underline hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-200"
         >
           Clear filters
         </button>

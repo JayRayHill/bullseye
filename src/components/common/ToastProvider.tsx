@@ -45,8 +45,8 @@ export function ToastProvider({ children }: { children: ReactNode }) {
             className={clsx(
               'pointer-events-auto rounded-lg px-4 py-3 text-sm shadow-lg ring-1',
               t.kind === 'error'
-                ? 'bg-red-50 text-red-900 ring-red-200'
-                : 'bg-slate-900 text-white ring-slate-700'
+                ? 'bg-red-50 text-red-900 ring-red-200 dark:bg-red-900/40 dark:text-red-100 dark:ring-red-800'
+                : 'bg-slate-900 text-white ring-slate-700 dark:bg-slate-100 dark:text-slate-900 dark:ring-slate-300'
             )}
           >
             {t.message}

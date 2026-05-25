@@ -1,7 +1,10 @@
-# Sales Territory Map
+# Bullseye Offense
 
-A static web app for visualizing closed-deal customers on a US map and surfacing
-nearby non-closed leads within a configurable radius. Upload your own CSV or
+> Every closed deal has a neighbor.
+
+A static web app for visualizing closed-deal customers on a US map, surfacing
+nearby non-closed leads within a configurable radius, and helping you email
+those leads with the closed customer as social proof. Upload your own CSV or
 Excel file; all processing stays in your browser.
 
 - **No backend.** Nothing leaves the device.
@@ -103,14 +106,25 @@ of truth.
 
 ## Swapping the map tiles
 
-OpenStreetMap is free with no API key. If you want a custom-styled map later,
-the easiest path is Mapbox:
+The map uses **MapLibre GL** with vector tiles from
+[OpenFreeMap](https://openfreemap.org) — both are free, no API key needed.
+Light mode uses the `positron` style; dark mode uses `dark`.
 
-1. `npm install react-map-gl mapbox-gl` (or stick with Leaflet and use
-   `mapbox.streets-v12` via the tile URL).
-2. Replace the `<TileLayer ... />` in
-   `src/components/map/TerritoryMap.tsx` with a Mapbox tile URL and your token
-   (use `import.meta.env.VITE_MAPBOX_TOKEN` from `.env.local`).
+To swap to **MapTiler** (commercial, generous free tier with SLA):
+
+1. Sign up for a free account at [maptiler.com](https://maptiler.com) and copy
+   your API key.
+2. Add it to `.env.local`: `VITE_MAPTILER_KEY=your_key_here`.
+3. In `src/components/map/TerritoryMap.tsx`, replace the `STYLE_LIGHT` /
+   `STYLE_DARK` constants with MapTiler style URLs, e.g.
+   `https://api.maptiler.com/maps/streets-v2/style.json?key=${import.meta.env.VITE_MAPTILER_KEY}`.
+
+To swap to **Mapbox** with a custom-branded style:
+
+1. Sign up at [mapbox.com](https://mapbox.com), create a style in Mapbox Studio.
+2. Add `VITE_MAPBOX_TOKEN` to `.env.local`.
+3. Point `STYLE_LIGHT` / `STYLE_DARK` at your Mapbox style URLs.
+4. Add `transformRequest` config to the `Map` constructor to inject the token.
 
 ## Deployment
 

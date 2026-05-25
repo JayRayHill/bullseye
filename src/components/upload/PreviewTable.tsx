@@ -20,26 +20,26 @@ export function PreviewTable({
   ];
   const sample = rows.slice(0, 5);
   return (
-    <div className="overflow-x-auto rounded-lg border border-slate-200">
-      <table className="min-w-full divide-y divide-slate-200 text-sm">
-        <thead className="bg-slate-50">
+    <div className="overflow-x-auto rounded-lg border border-slate-200 dark:border-slate-800">
+      <table className="min-w-full divide-y divide-slate-200 text-sm dark:divide-slate-800">
+        <thead className="bg-slate-50 dark:bg-slate-900">
           <tr>
             {visibleFields.map((f) => (
-              <th key={f} className="px-3 py-2 text-left font-medium text-slate-700">
+              <th key={f} className="px-3 py-2 text-left font-medium text-slate-700 dark:text-slate-300">
                 {f}
               </th>
             ))}
           </tr>
         </thead>
-        <tbody className="divide-y divide-slate-100 bg-white">
+        <tbody className="divide-y divide-slate-100 bg-white dark:divide-slate-800 dark:bg-slate-950">
           {sample.map((row, i) => (
             <tr key={i}>
               {visibleFields.map((f) => {
                 const header = mapping[f];
                 const value = header ? row[header] ?? '' : '';
                 return (
-                  <td key={f} className="px-3 py-2 text-slate-800">
-                    {value || <span className="text-slate-400">—</span>}
+                  <td key={f} className="px-3 py-2 text-slate-800 dark:text-slate-200">
+                    {value || <span className="text-slate-400 dark:text-slate-500">—</span>}
                   </td>
                 );
               })}

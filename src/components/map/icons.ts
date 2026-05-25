@@ -1,53 +1,103 @@
-// Leaflet renders marker icons outside React's tree (into raw DOM that React
-// never controls), so any class-based styling we use here needs to be self-
-// contained. Inline SVG via L.divIcon is the safest path — it avoids the entire
-// class of "Tailwind JIT pruned the class because it didn't see it in a TSX file"
-// bugs, since the SVG is committed verbatim into a string literal.
+// Bullseye Offense pin language for MapLibre. We keep the SVG strings as pure
+// functions and load each variant into the map via `map.addImage` so symbol
+// layers can render them as native (GPU-accelerated) markers.
+//
+// Pin shapes:
+//   - closed (brand): concentric rings — literal bullseye
+//   - lost:           gray pin with X
+//   - lead:           amber teardrop
+//
+// Hover variants are pre-registered too; the layer's icon-image expression
+// switches by feature-state.
 
-import L from 'leaflet';
+import type { Map as MapLibreMap } from 'maplibre-gl';
 
-const teardrop = (color: string, size: 'sm' | 'lg') => {
-  const w = size === 'sm' ? 24 : 28;
-  const h = size === 'sm' ? 32 : 38;
-  return `<svg width="${w}" height="${h}" viewBox="0 0 24 32" xmlns="http://www.w3.org/2000/svg">
-    <path d="M12 0C5.4 0 0 5.4 0 12c0 8 12 20 12 20s12-12 12-20C24 5.4 18.6 0 12 0z" fill="${color}" stroke="white" stroke-width="2"/>
-    <circle cx="12" cy="12" r="4" fill="white"/>
+const BRAND_700 = '#0c5f3f';
+const BRAND_300 = '#74d2a4';
+const LOST_GRAY = '#6b7280';
+const LOST_GRAY_LIGHT = '#9ca3af';
+const LEAD_AMBER = '#f59e0b';
+const WHITE = '#ffffff';
+
+// We render to a transparent 64×64 canvas for retina; report the logical size
+// to addImage via pixelRatio: 2 so MapLibre treats the icon as 32px on screen.
+const PIXEL_RATIO = 2;
+const LOGICAL_SIZE = 32;
+const RENDER_SIZE = LOGICAL_SIZE * PIXEL_RATIO; // 64
+
+function bullseyeRings(hover: boolean): string {
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${LOGICAL_SIZE}" height="${LOGICAL_SIZE}" viewBox="0 0 32 32">
+    ${hover ? `<circle cx="16" cy="16" r="15" fill="none" stroke="${BRAND_300}" stroke-width="3" opacity="0.85"/>` : ''}
+    <circle cx="16" cy="16" r="14" fill="${BRAND_700}" stroke="${WHITE}" stroke-width="2"/>
+    <circle cx="16" cy="16" r="9" fill="${WHITE}"/>
+    <circle cx="16" cy="16" r="5" fill="${BRAND_700}"/>
+    <circle cx="16" cy="16" r="1.6" fill="${WHITE}"/>
   </svg>`;
-};
+}
 
-const lostPin = (size: 'sm' | 'lg') => {
-  const w = size === 'sm' ? 24 : 28;
-  const h = size === 'sm' ? 32 : 38;
-  return `<svg width="${w}" height="${h}" viewBox="0 0 24 32" xmlns="http://www.w3.org/2000/svg">
-    <path d="M12 0C5.4 0 0 5.4 0 12c0 8 12 20 12 20s12-12 12-20C24 5.4 18.6 0 12 0z" fill="#6b7280" stroke="white" stroke-width="2"/>
-    <path d="M9 9l6 6M15 9l-6 6" stroke="white" stroke-width="2" stroke-linecap="round"/>
+function lostPin(darkTile: boolean, hover: boolean): string {
+  const fill = darkTile ? LOST_GRAY_LIGHT : LOST_GRAY;
+  const scale = hover ? 1.1 : 1;
+  // Teardrop with X. Logical canvas remains 24×32; we leave whitespace at the top
+  // to avoid clipping. Hover variant scales up the path slightly.
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${LOGICAL_SIZE}" height="${LOGICAL_SIZE}" viewBox="0 0 32 32">
+    <g transform="translate(${(32 - 24 * scale) / 2}, 0) scale(${scale})">
+      <path d="M12 0C5.4 0 0 5.4 0 12c0 8 12 20 12 20s12-12 12-20C24 5.4 18.6 0 12 0z" fill="${fill}" stroke="${WHITE}" stroke-width="2"/>
+      <path d="M9 9l6 6M15 9l-6 6" stroke="${WHITE}" stroke-width="2" stroke-linecap="round"/>
+    </g>
   </svg>`;
-};
+}
 
-function build(html: string, w: number, h: number) {
-  return L.divIcon({
-    html,
-    className: '',
-    iconSize: [w, h],
-    iconAnchor: [w / 2, h],
-    popupAnchor: [0, -h + 4],
+function leadPin(hover: boolean): string {
+  const scale = hover ? 1.1 : 1;
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${LOGICAL_SIZE}" height="${LOGICAL_SIZE}" viewBox="0 0 32 32">
+    <g transform="translate(${(32 - 24 * scale) / 2}, 0) scale(${scale})">
+      <path d="M12 0C5.4 0 0 5.4 0 12c0 8 12 20 12 20s12-12 12-20C24 5.4 18.6 0 12 0z" fill="${LEAD_AMBER}" stroke="${WHITE}" stroke-width="2"/>
+      <circle cx="12" cy="12" r="4" fill="${WHITE}"/>
+    </g>
+  </svg>`;
+}
+
+/** Image registry — name → SVG string. Exported for the lead HTML markers too. */
+export const PIN_SVGS = {
+  'pin-closed': bullseyeRings(false),
+  'pin-closed-hover': bullseyeRings(true),
+  'pin-lost': lostPin(false, false),
+  'pin-lost-hover': lostPin(false, true),
+  'pin-lost-dark': lostPin(true, false),
+  'pin-lost-dark-hover': lostPin(true, true),
+  'pin-lead': leadPin(false),
+  'pin-lead-hover': leadPin(true),
+} as const;
+
+export type PinName = keyof typeof PIN_SVGS;
+
+/** Returns an HTMLImageElement for the given SVG string, resolved when loaded. */
+function svgToImage(svg: string): Promise<HTMLImageElement> {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.width = RENDER_SIZE;
+    img.height = RENDER_SIZE;
+    img.onload = () => resolve(img);
+    img.onerror = (e) => reject(e);
+    // Encoding via URI rather than base64 keeps the data URL human-readable
+    // and avoids btoa unicode pitfalls.
+    img.src = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
   });
 }
 
-export const CLOSED_ICON = build(teardrop('#16a34a', 'sm'), 24, 32);
-export const CLOSED_ICON_HOVER = build(teardrop('#16a34a', 'lg'), 28, 38);
-export const LEAD_ICON = build(teardrop('#f59e0b', 'sm'), 24, 32);
-export const LEAD_ICON_HOVER = build(teardrop('#f59e0b', 'lg'), 28, 38);
-export const LOST_ICON = build(lostPin('sm'), 24, 32);
-export const LOST_ICON_HOVER = build(lostPin('lg'), 28, 38);
-
-/** Cluster bubble. Sized by total markers inside the cluster, styled green to
- *  match the closed-customer palette. */
-export function createClusterIcon(count: number): L.DivIcon {
-  const sizeClass = count < 10 ? 'stm-cluster-sm' : count < 100 ? 'stm-cluster-md' : 'stm-cluster-lg';
-  return L.divIcon({
-    html: `<div class="stm-cluster ${sizeClass}">${count}</div>`,
-    className: '',
-    iconSize: [40, 40],
-  });
+/** Register every pin variant on the map. Idempotent: existing images are
+ *  skipped, so this is safe to call after style swaps (e.g. light → dark). */
+export async function loadPinImages(map: MapLibreMap): Promise<void> {
+  const entries = Object.entries(PIN_SVGS) as [PinName, string][];
+  await Promise.all(
+    entries.map(async ([name, svg]) => {
+      if (map.hasImage(name)) return;
+      const img = await svgToImage(svg);
+      // pixelRatio 2 so MapLibre renders the 32-logical-px image at retina.
+      if (!map.hasImage(name)) {
+        map.addImage(name, img, { pixelRatio: PIXEL_RATIO });
+      }
+    })
+  );
 }

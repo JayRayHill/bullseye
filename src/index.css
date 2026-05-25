@@ -9,47 +9,39 @@
     height: 100%;
   }
   body {
-    @apply bg-slate-50 text-slate-900 antialiased;
+    @apply bg-slate-50 text-slate-900 antialiased dark:bg-slate-950 dark:text-slate-100;
     font-family: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
   }
 }
 
-/* Leaflet's default marker assets are bundled separately; we use custom DivIcons so
-   no fix-up needed for default icons. Keep Leaflet's tile container behind everything. */
-.leaflet-container {
-  background: #e2e8f0;
-  font-family: inherit;
+/* MapLibre's default attribution control is a bit loud; soften the badge and
+   align it to our color tokens so it doesn't fight the rest of the UI. */
+.maplibregl-ctrl-attrib {
+  @apply !bg-white/80 !text-[10px] dark:!bg-slate-900/70 dark:!text-slate-300;
+}
+.maplibregl-ctrl-attrib a {
+  @apply !text-slate-700 hover:!text-slate-900 dark:!text-slate-300 dark:hover:!text-white;
 }
 
-/* Cluster bubble custom styling to match the closed/green palette. */
-.stm-cluster {
-  @apply flex items-center justify-center rounded-full text-white font-semibold shadow ring-2 ring-white;
-  background: rgba(22, 163, 74, 0.85);
+/* Hover/click popup styling — strip MapLibre's default white box, add our own. */
+.maplibregl-popup.stm-popup .maplibregl-popup-content {
+  @apply rounded-md border border-slate-200 bg-white px-2.5 py-1.5 shadow-md dark:border-slate-700 dark:bg-slate-900;
 }
-.stm-cluster-sm {
-  width: 32px;
-  height: 32px;
-  font-size: 12px;
-}
-.stm-cluster-md {
-  width: 40px;
-  height: 40px;
-  font-size: 13px;
-}
-.stm-cluster-lg {
-  width: 48px;
-  height: 48px;
-  font-size: 14px;
+.maplibregl-popup.stm-popup .maplibregl-popup-tip {
+  border-top-color: transparent;
+  border-bottom-color: transparent;
 }
 
-/* DivIcon wrappers — strip the default white square. */
-.leaflet-div-icon {
-  background: transparent;
-  border: none;
+/* Navigation control (zoom buttons) tone-matched. */
+.maplibregl-ctrl-group {
+  @apply !rounded-md !border !border-slate-200 !shadow-sm dark:!border-slate-700 dark:!bg-slate-900;
+}
+.maplibregl-ctrl-group button {
+  @apply !bg-white/95 !text-slate-700 hover:!bg-white dark:!bg-slate-900/95 dark:!text-slate-100 dark:hover:!bg-slate-900;
 }
 
-/* Focus rings consistent with Tailwind defaults but visible on the map overlay. */
+/* Consistent focus ring utility used across custom interactive elements. */
 .stm-focus:focus-visible {
-  outline: 2px solid #2563eb;
+  outline: 2px solid #1a8e60;
   outline-offset: 2px;
 }

@@ -71,14 +71,14 @@ export function UploadDropzone() {
       className={clsx(
         'flex flex-col items-center justify-center gap-3 rounded-xl border-2 border-dashed p-10 transition-colors',
         dragOver
-          ? 'border-blue-500 bg-blue-50'
-          : 'border-slate-300 bg-white hover:border-slate-400'
+          ? 'border-brand-500 bg-brand-50 dark:border-brand-400 dark:bg-brand-900/30'
+          : 'border-slate-300 bg-white hover:border-brand-400 dark:border-slate-700 dark:bg-slate-900 dark:hover:border-brand-600'
       )}
     >
       <svg
         aria-hidden="true"
         viewBox="0 0 24 24"
-        className="h-10 w-10 text-slate-400"
+        className="h-10 w-10 text-slate-400 dark:text-slate-500"
         fill="none"
         stroke="currentColor"
         strokeWidth="1.5"
@@ -89,14 +89,14 @@ export function UploadDropzone() {
           d="M3 16.5V19a2 2 0 002 2h14a2 2 0 002-2v-2.5M16 6l-4-4m0 0L8 6m4-4v12"
         />
       </svg>
-      <p className="text-sm text-slate-700">
+      <p className="text-sm text-slate-700 dark:text-slate-300">
         {busy ? 'Parsing…' : 'Drag and drop a .csv or .xlsx file here, or'}
       </p>
       <button
         type="button"
         disabled={busy}
         onClick={() => inputRef.current?.click()}
-        className="rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600 disabled:opacity-60"
+        className="rounded-md bg-brand-700 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-brand-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-400 disabled:opacity-60 dark:bg-brand-600 dark:hover:bg-brand-500"
       >
         Choose a file
       </button>
@@ -112,7 +112,7 @@ export function UploadDropzone() {
           e.target.value = '';
         }}
       />
-      <p className="text-xs text-slate-500">Up to 50 MB. Larger files prompt for confirmation.</p>
+      <p className="text-xs text-slate-500 dark:text-slate-400">Up to 50 MB. Larger files prompt for confirmation.</p>
     </div>
   );
 }

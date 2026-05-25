@@ -1,183 +1,422 @@
-// The main map: tile layer, customer markers (closed + lost) inside a cluster
-// group, and nearby-lead markers rendered outside the cluster while a customer
-// is active. We deliberately keep leads out of the cluster — they are transient
-// and tied to selection, so mixing them in causes flicker as selection changes.
+// The main map, now powered by MapLibre GL with native (GPU) clustering.
+//
+// Why MapLibre over Leaflet:
+//   - Vector tiles render crisply at every zoom, smooth pan/zoom on touch
+//   - Source-level clustering scales to 100k+ markers without breaking a sweat
+//   - Feature-state hover/active swaps are a single GPU draw, not React renders
+//
+// Tile style: OpenFreeMap (free, no API key, attribution-ready).
+//   - Light: positron
+//   - Dark:  dark
+// To swap to MapTiler later, just point STYLE_URL_* at their style endpoints
+// (which take ?key=YOUR_KEY in the URL).
+//
+// Layer architecture:
+//   - `customers` source: GeoJSON of closed + lost customers, cluster: true
+//     - cluster-circle layer  → brand-green bubble for clustered points
+//     - cluster-count layer   → white number inside the bubble
+//     - customer-pins layer   → unclustered bullseye / lost icons with
+//                               feature-state-driven hover & active variants
+//   - Nearby leads are HTML maplibregl.Marker instances rather than a layer.
+//     They're a small (<50) dynamic set tied to the active selection — the
+//     overhead of plain DOM markers is negligible and keeps the code simple.
 
-import { useEffect, useMemo } from 'react';
-import {
-  MapContainer,
-  TileLayer,
+import { useEffect, useMemo, useRef } from 'react';
+import maplibregl, {
+  type Map as MapLibreMap,
+  type MapMouseEvent,
+  type GeoJSONSource,
   Marker,
-  Tooltip,
-  useMap,
-} from 'react-leaflet';
-import MarkerClusterGroup from 'react-leaflet-cluster';
-import 'leaflet.markercluster';
-import type L from 'leaflet';
+  Popup,
+} from 'maplibre-gl';
 import type { Customer } from '../../types';
-import {
-  CLOSED_ICON,
-  CLOSED_ICON_HOVER,
-  LEAD_ICON,
-  LEAD_ICON_HOVER,
-  LOST_ICON,
-  LOST_ICON_HOVER,
-  createClusterIcon,
-} from './icons';
 import { useSelection } from '../../context/SelectionContext';
 import { useNearbyLeads } from '../../hooks/useNearbyLeads';
 import { useFilters } from '../../context/FiltersContext';
+import { usePrefersDark } from '../../hooks/usePrefersDark';
+import { loadPinImages, PIN_SVGS } from './icons';
 
-const DEFAULT_CENTER: [number, number] = [39.5, -98.35];
-const DEFAULT_ZOOM = 4;
+const DEFAULT_CENTER: [number, number] = [-98.35, 39.5]; // MapLibre uses [lng, lat]
+const DEFAULT_ZOOM = 3.5;
 
-function FlyToActive({ customers }: { customers: Customer[] }) {
-  const map = useMap();
-  const { activeCustomerId } = useSelection();
-  useEffect(() => {
-    if (!activeCustomerId) return;
-    const c = customers.find((cust) => cust.id === activeCustomerId);
-    if (!c) return;
-    const targetZoom = Math.max(map.getZoom(), 8);
-    map.flyTo([c.lat, c.lng], targetZoom, { duration: 0.6 });
-  }, [activeCustomerId, customers, map]);
-  return null;
-}
+// OpenFreeMap styles. Free, no API key. Attribution baked into the style.
+const STYLE_LIGHT = 'https://tiles.openfreemap.org/styles/positron';
+const STYLE_DARK = 'https://tiles.openfreemap.org/styles/dark';
 
-function ResetControl() {
-  const map = useMap();
-  return (
-    <button
-      type="button"
-      onClick={() => map.setView(DEFAULT_CENTER, DEFAULT_ZOOM)}
-      className="absolute right-3 top-3 z-[400] rounded-md bg-white px-3 py-1.5 text-xs font-medium text-slate-800 shadow ring-1 ring-slate-200 hover:bg-slate-50"
-    >
-      Reset view
-    </button>
-  );
-}
+const CUSTOMERS_SOURCE = 'customers';
+const CLUSTER_LAYER = 'cluster-circles';
+const CLUSTER_COUNT_LAYER = 'cluster-count';
+const CUSTOMER_LAYER = 'customer-pins';
 
-interface MapMarkerProps {
-  customer: Customer;
-}
-
-function ClosedMarker({ customer }: MapMarkerProps) {
-  const { setActive, setHovered, hoveredId, activeCustomerId } = useSelection();
-  const isHover = hoveredId === customer.id || activeCustomerId === customer.id;
-  const icon =
-    customer.deal_status === 'lost'
-      ? isHover
-        ? LOST_ICON_HOVER
-        : LOST_ICON
-      : isHover
-        ? CLOSED_ICON_HOVER
-        : CLOSED_ICON;
-  return (
-    <Marker
-      position={[customer.lat, customer.lng]}
-      icon={icon}
-      eventHandlers={{
-        click: () => setActive(customer.id),
-        mouseover: () => setHovered(customer.id),
-        mouseout: () => setHovered(null),
-      }}
-      keyboard={false}
-    >
-      <Tooltip direction="top" offset={[0, -28]}>
-        <div className="text-xs">
-          <div className="font-semibold">{customer.business_name}</div>
-          {customer.city || customer.state ? (
-            <div className="text-slate-600">
-              {[customer.city, customer.state].filter(Boolean).join(', ')}
-            </div>
-          ) : null}
-          <div className="text-slate-500">
-            {customer.deal_status === 'closed' ? 'Closed' : customer.deal_status === 'lost' ? 'Lost' : 'Open'}
-          </div>
-        </div>
-      </Tooltip>
-    </Marker>
-  );
-}
-
-function LeadMarker({ customer }: MapMarkerProps) {
-  const { setActive, setHovered, hoveredId } = useSelection();
-  const isHover = hoveredId === customer.id;
-  return (
-    <Marker
-      position={[customer.lat, customer.lng]}
-      icon={isHover ? LEAD_ICON_HOVER : LEAD_ICON}
-      eventHandlers={{
-        click: () => setActive(customer.id),
-        mouseover: () => setHovered(customer.id),
-        mouseout: () => setHovered(null),
-      }}
-      keyboard={false}
-    >
-      <Tooltip direction="top" offset={[0, -28]}>
-        <div className="text-xs">
-          <div className="font-semibold">{customer.business_name}</div>
-          {customer.city || customer.state ? (
-            <div className="text-slate-600">
-              {[customer.city, customer.state].filter(Boolean).join(', ')}
-            </div>
-          ) : null}
-          <div className="text-slate-500">Open lead</div>
-        </div>
-      </Tooltip>
-    </Marker>
-  );
-}
-
-export function TerritoryMap({
-  customers,
-  allCustomers,
-}: {
+interface TerritoryMapProps {
   /** Customers passing the user's filters; closed + lost go in clusters. */
   customers: Customer[];
   /** Full customer list — needed for nearby-lead lookups, which ignore filters
    *  so the user does not lose context just because filters hid the leads. */
   allCustomers: Customer[];
-}) {
-  const { filters } = useFilters();
-  const { activeCustomerId } = useSelection();
-  const { leads } = useNearbyLeads(allCustomers, activeCustomerId, filters.radiusMiles);
+}
 
-  // Split into clustered (closed/lost) vs lead set. The cluster group only
-  // contains closed/lost markers; leads layer is flat on top.
-  const clustered = useMemo(
-    () => customers.filter((c) => c.deal_status === 'closed' || c.deal_status === 'lost'),
-    [customers]
-  );
+export function TerritoryMap({ customers, allCustomers }: TerritoryMapProps) {
+  const { filters } = useFilters();
+  const { activeCustomerId, hoveredId, setActive, setHovered } = useSelection();
+  const { leads } = useNearbyLeads(allCustomers, activeCustomerId, filters.radiusMiles);
+  const isDark = usePrefersDark();
+
+  const containerRef = useRef<HTMLDivElement | null>(null);
+  const mapRef = useRef<MapLibreMap | null>(null);
+  const styleLoadedRef = useRef(false);
+  const leadMarkersRef = useRef<Marker[]>([]);
+  const popupRef = useRef<Popup | null>(null);
+  // Track the currently hovered/active feature-state ids so we can clear them
+  // before applying a new one (otherwise stale state lingers across hovers).
+  const stateRef = useRef<{ hovered: string | null; active: string | null }>({
+    hovered: null,
+    active: null,
+  });
+
+  // Subset rendered in clusters: only closed + lost customers (leads are HTML).
+  const clusteredFeatures = useMemo(() => {
+    return customers
+      .filter((c) => c.deal_status === 'closed' || c.deal_status === 'lost')
+      .map((c) => ({
+        type: 'Feature' as const,
+        id: c.id,
+        geometry: { type: 'Point' as const, coordinates: [c.lng, c.lat] },
+        properties: {
+          id: c.id,
+          status: c.deal_status,
+          business_name: c.business_name,
+          city: c.city ?? '',
+          state: c.state ?? '',
+        },
+      }));
+  }, [customers]);
+
+  // ---- 1. One-time map initialization ----
+  useEffect(() => {
+    if (!containerRef.current || mapRef.current) return;
+    const map = new maplibregl.Map({
+      container: containerRef.current,
+      style: isDark ? STYLE_DARK : STYLE_LIGHT,
+      center: DEFAULT_CENTER,
+      zoom: DEFAULT_ZOOM,
+      attributionControl: { compact: true },
+    });
+    mapRef.current = map;
+
+    map.addControl(new maplibregl.NavigationControl({ showCompass: false }), 'top-left');
+
+    map.on('load', () => {
+      void hydrateMap(map);
+    });
+
+    return () => {
+      map.remove();
+      mapRef.current = null;
+      styleLoadedRef.current = false;
+      leadMarkersRef.current.forEach((m) => m.remove());
+      leadMarkersRef.current = [];
+    };
+    // We intentionally do not include isDark here — the style swap is handled
+    // in a separate effect below to preserve map state (center/zoom).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // ---- 2. Style swap when prefers-color-scheme changes ----
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return;
+    // setStyle wipes user-added sources/layers, so we re-hydrate after.
+    styleLoadedRef.current = false;
+    map.setStyle(isDark ? STYLE_DARK : STYLE_LIGHT);
+    map.once('styledata', () => {
+      void hydrateMap(map);
+    });
+  }, [isDark]);
+
+  /** Add our source + layers + images on top of whichever style is loaded. */
+  async function hydrateMap(map: MapLibreMap) {
+    if (styleLoadedRef.current) return;
+    await loadPinImages(map);
+
+    if (!map.getSource(CUSTOMERS_SOURCE)) {
+      map.addSource(CUSTOMERS_SOURCE, {
+        type: 'geojson',
+        data: { type: 'FeatureCollection', features: [] },
+        cluster: true,
+        clusterMaxZoom: 12,
+        clusterRadius: 50,
+        promoteId: 'id',
+      });
+    }
+
+    if (!map.getLayer(CLUSTER_LAYER)) {
+      map.addLayer({
+        id: CLUSTER_LAYER,
+        type: 'circle',
+        source: CUSTOMERS_SOURCE,
+        filter: ['has', 'point_count'],
+        paint: {
+          'circle-color': isDark ? '#1a8e60' : '#0c5f3f',
+          'circle-radius': ['step', ['get', 'point_count'], 16, 10, 22, 100, 28],
+          'circle-stroke-width': 2,
+          'circle-stroke-color': isDark ? '#0a1f17' : '#ffffff',
+        },
+      });
+    }
+
+    if (!map.getLayer(CLUSTER_COUNT_LAYER)) {
+      map.addLayer({
+        id: CLUSTER_COUNT_LAYER,
+        type: 'symbol',
+        source: CUSTOMERS_SOURCE,
+        filter: ['has', 'point_count'],
+        layout: {
+          'text-field': ['get', 'point_count_abbreviated'],
+          'text-font': ['Noto Sans Bold'],
+          'text-size': 13,
+        },
+        paint: { 'text-color': '#ffffff' },
+      });
+    }
+
+    if (!map.getLayer(CUSTOMER_LAYER)) {
+      // NOTE: MapLibre disallows feature-state in layout properties (icon-image
+      // is a layout). We drive the icon entirely by the static `status`
+      // property; the hover affordance is the cursor change + popup, and the
+      // active affordance is the auto flyTo + detail panel opening.
+      const lostIcon = isDark ? 'pin-lost-dark' : 'pin-lost';
+      map.addLayer({
+        id: CUSTOMER_LAYER,
+        type: 'symbol',
+        source: CUSTOMERS_SOURCE,
+        filter: ['!', ['has', 'point_count']],
+        layout: {
+          'icon-image': [
+            'case',
+            ['==', ['get', 'status'], 'lost'],
+            lostIcon,
+            'pin-closed',
+          ],
+          'icon-allow-overlap': true,
+          'icon-anchor': 'center',
+        },
+      });
+    }
+
+    // Event handlers — attached once per hydration. setStyle wipes them along
+    // with the layers, so we re-attach on every hydrate.
+    map.on('click', CLUSTER_LAYER, onClusterClick);
+    map.on('click', CUSTOMER_LAYER, onCustomerClick);
+    map.on('mouseenter', CUSTOMER_LAYER, onCustomerMouseEnter);
+    map.on('mouseleave', CUSTOMER_LAYER, onCustomerMouseLeave);
+    map.on('mouseenter', CLUSTER_LAYER, () => {
+      map.getCanvas().style.cursor = 'pointer';
+    });
+    map.on('mouseleave', CLUSTER_LAYER, () => {
+      map.getCanvas().style.cursor = '';
+    });
+
+    styleLoadedRef.current = true;
+
+    // Apply current data + selection state immediately.
+    syncCustomerData(map);
+    syncSelectionFeatureState(map);
+  }
+
+  function onClusterClick(e: MapMouseEvent) {
+    const map = mapRef.current;
+    if (!map) return;
+    const features = map.queryRenderedFeatures(e.point, { layers: [CLUSTER_LAYER] });
+    const clusterId = features[0]?.properties?.cluster_id;
+    if (clusterId == null) return;
+    const source = map.getSource(CUSTOMERS_SOURCE) as GeoJSONSource;
+    source.getClusterExpansionZoom(clusterId).then((zoom) => {
+      map.easeTo({
+        center: (features[0].geometry as GeoJSON.Point).coordinates as [number, number],
+        zoom,
+      });
+    });
+  }
+
+  function onCustomerClick(e: MapMouseEvent & { features?: maplibregl.MapGeoJSONFeature[] }) {
+    const feature = e.features?.[0];
+    const id = feature?.properties?.id as string | undefined;
+    if (id) setActive(id);
+  }
+
+  function onCustomerMouseEnter(e: MapMouseEvent & { features?: maplibregl.MapGeoJSONFeature[] }) {
+    const map = mapRef.current;
+    if (!map) return;
+    map.getCanvas().style.cursor = 'pointer';
+    const feature = e.features?.[0];
+    if (!feature) return;
+    const id = feature.properties?.id as string | undefined;
+    if (!id) return;
+    setHovered(id);
+    showPopup(map, feature);
+  }
+
+  function onCustomerMouseLeave() {
+    const map = mapRef.current;
+    if (!map) return;
+    map.getCanvas().style.cursor = '';
+    setHovered(null);
+    if (popupRef.current) {
+      popupRef.current.remove();
+      popupRef.current = null;
+    }
+  }
+
+  function showPopup(map: MapLibreMap, feature: maplibregl.MapGeoJSONFeature) {
+    const props = feature.properties;
+    const coords = (feature.geometry as GeoJSON.Point).coordinates as [number, number];
+    if (popupRef.current) popupRef.current.remove();
+    const cityState = [props.city, props.state].filter(Boolean).join(', ');
+    const statusLabel =
+      props.status === 'closed' ? 'Closed' : props.status === 'lost' ? 'Lost' : 'Open';
+    const html = `
+      <div style="font-size: 12px; line-height: 1.4;">
+        <div style="font-weight: 600;">${escapeHtml(String(props.business_name ?? ''))}</div>
+        ${cityState ? `<div style="color: #475569;">${escapeHtml(cityState)}</div>` : ''}
+        <div style="color: #64748b;">${statusLabel}</div>
+      </div>`;
+    popupRef.current = new maplibregl.Popup({
+      closeButton: false,
+      closeOnClick: false,
+      offset: 18,
+      className: 'stm-popup',
+    })
+      .setLngLat(coords)
+      .setHTML(html)
+      .addTo(map);
+  }
+
+  /** Push the latest clustered feature list into the source. */
+  function syncCustomerData(map: MapLibreMap) {
+    const src = map.getSource(CUSTOMERS_SOURCE) as GeoJSONSource | undefined;
+    if (!src) return;
+    src.setData({
+      type: 'FeatureCollection',
+      features: clusteredFeatures as GeoJSON.Feature[],
+    });
+  }
+
+  /** Apply hover + active feature-state, clearing previous ids first. */
+  function syncSelectionFeatureState(map: MapLibreMap) {
+    const setState = (id: string | null, key: 'hovered' | 'active', value: boolean) => {
+      if (!id) return;
+      try {
+        map.setFeatureState({ source: CUSTOMERS_SOURCE, id }, { [key]: value });
+      } catch {
+        /* feature may not be loaded yet — safe to skip */
+      }
+    };
+    // Clear previous states
+    if (stateRef.current.hovered && stateRef.current.hovered !== hoveredId) {
+      setState(stateRef.current.hovered, 'hovered', false);
+    }
+    if (stateRef.current.active && stateRef.current.active !== activeCustomerId) {
+      setState(stateRef.current.active, 'active', false);
+    }
+    // Apply current states
+    setState(hoveredId, 'hovered', true);
+    setState(activeCustomerId, 'active', true);
+    stateRef.current = { hovered: hoveredId, active: activeCustomerId };
+  }
+
+  // ---- 3. Update source data when filtered customers change ----
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !styleLoadedRef.current) return;
+    syncCustomerData(map);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [clusteredFeatures]);
+
+  // ---- 4. Mirror selection/hover to feature-state ----
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !styleLoadedRef.current) return;
+    syncSelectionFeatureState(map);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hoveredId, activeCustomerId]);
+
+  // ---- 5. Fly to the active customer when selection changes ----
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !activeCustomerId) return;
+    const c = allCustomers.find((cust) => cust.id === activeCustomerId);
+    if (!c) return;
+    map.flyTo({
+      center: [c.lng, c.lat],
+      zoom: Math.max(map.getZoom(), 9),
+      duration: 700,
+      essential: true,
+    });
+  }, [activeCustomerId, allCustomers]);
+
+  // ---- 6. HTML markers for the small dynamic lead set ----
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return;
+
+    // Clear previous markers each render — leads is a small set tied to selection.
+    leadMarkersRef.current.forEach((m) => m.remove());
+    leadMarkersRef.current = [];
+
+    for (const lead of leads) {
+      const wrapper = document.createElement('div');
+      wrapper.innerHTML = PIN_SVGS['pin-lead'];
+      const el = wrapper.firstElementChild as HTMLElement | null;
+      if (!el) continue;
+      el.style.cursor = 'pointer';
+      el.style.transition = 'transform 120ms ease-out';
+      el.addEventListener('mouseenter', () => {
+        el.outerHTML = PIN_SVGS['pin-lead-hover'];
+        setHovered(lead.customer.id);
+      });
+      el.addEventListener('mouseleave', () => {
+        setHovered(null);
+      });
+      el.addEventListener('click', () => setActive(lead.customer.id));
+      const marker = new maplibregl.Marker({ element: el, anchor: 'center' })
+        .setLngLat([lead.customer.lng, lead.customer.lat])
+        .addTo(map);
+      leadMarkersRef.current.push(marker);
+    }
+
+    return () => {
+      leadMarkersRef.current.forEach((m) => m.remove());
+      leadMarkersRef.current = [];
+    };
+  }, [leads, setActive, setHovered]);
+
+  // ---- 7. Reset view button ----
+  function onResetView() {
+    const map = mapRef.current;
+    if (!map) return;
+    map.flyTo({ center: DEFAULT_CENTER, zoom: DEFAULT_ZOOM, duration: 600 });
+  }
 
   return (
-    <div className="relative h-full min-h-[24rem] w-full">
-      <MapContainer
-        center={DEFAULT_CENTER}
-        zoom={DEFAULT_ZOOM}
-        scrollWheelZoom
-        className="h-full w-full rounded-lg"
-        aria-label="Customer map"
+    <div className="relative h-full min-h-[24rem] w-full overflow-hidden rounded-lg">
+      <div ref={containerRef} className="h-full w-full" aria-label="Customer map" role="region" />
+      <button
+        type="button"
+        onClick={onResetView}
+        className="absolute right-3 top-3 z-10 rounded-md bg-white/95 px-3 py-1.5 text-xs font-medium text-slate-800 shadow ring-1 ring-slate-200 backdrop-blur transition-colors hover:bg-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-400 dark:bg-slate-900/95 dark:text-slate-100 dark:ring-slate-700 dark:hover:bg-slate-900"
       >
-        <TileLayer
-          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-        />
-        <MarkerClusterGroup
-          chunkedLoading
-          removeOutsideVisibleBounds
-          iconCreateFunction={(cluster: L.MarkerCluster) => createClusterIcon(cluster.getChildCount())}
-        >
-          {clustered.map((c) => (
-            <ClosedMarker key={c.id} customer={c} />
-          ))}
-        </MarkerClusterGroup>
-        {leads.map((l) => (
-          <LeadMarker key={l.customer.id} customer={l.customer} />
-        ))}
-        <FlyToActive customers={allCustomers} />
-        <ResetControl />
-      </MapContainer>
+        Reset view
+      </button>
     </div>
   );
+}
+
+function escapeHtml(input: string): string {
+  return input
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
 }

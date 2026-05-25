@@ -7,10 +7,10 @@ import type { Customer } from '../../types';
 function StatusBadge({ status }: { status: Customer['deal_status'] }) {
   const styles =
     status === 'closed'
-      ? 'bg-emerald-100 text-emerald-900'
+      ? 'bg-brand-100 text-brand-900 dark:bg-brand-900/40 dark:text-brand-100'
       : status === 'lost'
-        ? 'bg-slate-200 text-slate-700'
-        : 'bg-amber-100 text-amber-900';
+        ? 'bg-slate-200 text-slate-700 dark:bg-slate-800 dark:text-slate-300'
+        : 'bg-amber-100 text-amber-900 dark:bg-amber-900/40 dark:text-amber-100';
   const label = status === 'closed' ? 'Closed' : status === 'lost' ? 'Lost' : 'Open';
   return <span className={`rounded px-2 py-0.5 text-xs font-medium ${styles}`}>{label}</span>;
 }
@@ -21,10 +21,10 @@ export function ActiveCustomerCard({ customer }: { customer: Customer }) {
     <div className="space-y-3">
       <div className="flex items-start justify-between gap-3">
         <div>
-          <h3 className="text-lg font-semibold text-slate-900">{customer.business_name}</h3>
-          <p className="text-sm text-slate-600">
+          <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100">{customer.business_name}</h3>
+          <p className="text-sm text-slate-600 dark:text-slate-400">
             {cityState ? `${cityState} ` : ''}
-            <span className="font-mono text-xs text-slate-500">ZIP {customer.zip}</span>
+            <span className="font-mono text-xs text-slate-500 dark:text-slate-500">ZIP {customer.zip}</span>
           </p>
         </div>
         <StatusBadge status={customer.deal_status} />
@@ -53,8 +53,8 @@ export function ActiveCustomerCard({ customer }: { customer: Customer }) {
 function Row({ label, value }: { label: string; value: string }) {
   return (
     <div className="text-sm">
-      <dt className="text-xs uppercase tracking-wide text-slate-500">{label}</dt>
-      <dd className="text-slate-900">{value}</dd>
+      <dt className="text-xs uppercase tracking-wide text-slate-500 dark:text-slate-400">{label}</dt>
+      <dd className="text-slate-900 dark:text-slate-100">{value}</dd>
     </div>
   );
 }

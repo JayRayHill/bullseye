@@ -109,11 +109,11 @@ export function ColumnMappingForm() {
       aria-label="Column mapping"
       className="fixed inset-0 z-[2000] flex items-center justify-center bg-slate-900/50 p-4"
     >
-      <div className="flex max-h-[90vh] w-full max-w-3xl flex-col overflow-hidden rounded-xl bg-white shadow-xl">
-        <header className="flex items-start justify-between border-b border-slate-200 p-5">
+      <div className="flex max-h-[90vh] w-full max-w-3xl flex-col overflow-hidden rounded-xl bg-white shadow-xl dark:bg-slate-900">
+        <header className="flex items-start justify-between border-b border-slate-200 p-5 dark:border-slate-800">
           <div>
-            <h2 className="text-lg font-semibold text-slate-900">Map your columns</h2>
-            <p className="mt-1 text-sm text-slate-600">
+            <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">Map your columns</h2>
+            <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">
               We tried to auto-detect each column from{' '}
               <span className="font-medium">{pending.filename}</span>. Adjust if anything looks
               wrong, then load the data.
@@ -122,7 +122,7 @@ export function ColumnMappingForm() {
           <button
             type="button"
             onClick={cancelMapping}
-            className="rounded-md p-1 text-slate-500 hover:bg-slate-100"
+            className="rounded-md p-1 text-slate-500 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800"
             aria-label="Cancel upload"
           >
             <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2">
@@ -131,7 +131,7 @@ export function ColumnMappingForm() {
           </button>
         </header>
         <div className="flex-1 overflow-y-auto p-5">
-          <h3 className="mb-2 text-sm font-semibold text-slate-900">Required</h3>
+          <h3 className="mb-2 text-sm font-semibold text-slate-900 dark:text-slate-100">Required</h3>
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             {REQUIRED_FIELDS.map((field) => (
               <FieldSelector
@@ -145,14 +145,14 @@ export function ColumnMappingForm() {
             ))}
           </div>
 
-          <p className="mt-3 rounded-md bg-slate-50 px-3 py-2 text-xs text-slate-600">
+          <p className="mt-3 rounded-md bg-brand-50 px-3 py-2 text-xs text-brand-900 dark:bg-brand-900/30 dark:text-brand-100">
             <strong className="font-semibold">Classification:</strong> a row with a recent deal
             close date is shown as a closed customer (green). Without a close date, rows marked
             &ldquo;lost&rdquo; show in gray; everything else is treated as an open lead (amber).
           </p>
 
-          <details className="mt-5 rounded-lg border border-slate-200 p-3" open>
-            <summary className="cursor-pointer text-sm font-semibold text-slate-900">
+          <details className="mt-5 rounded-lg border border-slate-200 p-3 dark:border-slate-800" open>
+            <summary className="cursor-pointer text-sm font-semibold text-slate-900 dark:text-slate-100">
               Optional fields
             </summary>
             <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
@@ -168,13 +168,13 @@ export function ColumnMappingForm() {
             </div>
           </details>
 
-          <h3 className="mb-2 mt-5 text-sm font-semibold text-slate-900">
+          <h3 className="mb-2 mt-5 text-sm font-semibold text-slate-900 dark:text-slate-100">
             Preview (first 5 rows)
           </h3>
           <PreviewTable rows={pending.rows} mapping={mapping} />
         </div>
-        <footer className="flex items-center justify-between border-t border-slate-200 bg-slate-50 px-5 py-4">
-          <p className="text-xs text-slate-600">
+        <footer className="flex items-center justify-between border-t border-slate-200 bg-slate-50 px-5 py-4 dark:border-slate-800 dark:bg-slate-950">
+          <p className="text-xs text-slate-600 dark:text-slate-400">
             {coordsLoading ? 'Loading US zip database…' : null}
             {coordsError ? `Zip data error: ${coordsError}` : null}
           </p>
@@ -182,7 +182,7 @@ export function ColumnMappingForm() {
             <button
               type="button"
               onClick={cancelMapping}
-              className="rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm font-medium text-slate-800 hover:bg-slate-50"
+              className="rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm font-medium text-slate-800 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
             >
               Cancel
             </button>
@@ -190,7 +190,7 @@ export function ColumnMappingForm() {
               type="button"
               onClick={onConfirm}
               disabled={!requiredOk || busy || coordsLoading || !!coordsError}
-              className="rounded-md bg-blue-600 px-4 py-1.5 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-60"
+              className="rounded-md bg-brand-700 px-4 py-1.5 text-sm font-medium text-white hover:bg-brand-800 disabled:opacity-60 dark:bg-brand-600 dark:hover:bg-brand-500"
             >
               {busy ? 'Loading…' : 'Load data'}
             </button>
@@ -218,17 +218,19 @@ function FieldSelector({
   const missing = required && !value;
   return (
     <div>
-      <label htmlFor={id} className="mb-1 block text-xs font-medium text-slate-700">
+      <label htmlFor={id} className="mb-1 block text-xs font-medium text-slate-700 dark:text-slate-300">
         {FIELD_LABELS[field]}
-        {required ? <span className="ml-1 text-red-600">*</span> : null}
+        {required ? <span className="ml-1 text-red-600 dark:text-red-400">*</span> : null}
       </label>
       <select
         id={id}
         value={value ?? ''}
         onChange={(e) => onChange(e.target.value || null)}
         className={
-          'block w-full rounded-md border bg-white px-2 py-1.5 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 ' +
-          (missing ? 'border-red-400' : 'border-slate-300')
+          'block w-full rounded-md border bg-white px-2 py-1.5 text-sm shadow-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500 dark:bg-slate-950 dark:text-slate-100 ' +
+          (missing
+            ? 'border-red-400 dark:border-red-500'
+            : 'border-slate-300 dark:border-slate-700')
         }
       >
         <option value="">{required ? '— select —' : '— unmapped —'}</option>

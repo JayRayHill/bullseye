@@ -1,30 +1,57 @@
-// Top-level layout used once a dataset is loaded. Renders header (with reset
-// controls), filter bar + radius slider, the map, and the detail panel below.
-// On mobile the map and panel stack vertically; on md+ the panel sits beside
-// the map for context-while-browsing.
+// Top-level layout used once a dataset is loaded. Renders header (logo +
+// wordmark + tagline + stats strip), filter bar + radius slider, the map, and
+// the detail panel beside it.
+//
+// Shell also owns the SettingsDialog mount and the CampaignDrawer mount so
+// they can be opened from anywhere in the tree (e.g. the campaign drawer
+// auto-prompts the settings dialog).
 
-import { useState } from 'react';
+import { lazy, Suspense, useCallback, useState } from 'react';
 import { useData } from '../../context/DataContext';
 import { useFilteredCustomers } from '../../hooks/useFilteredCustomers';
 import { useFilters } from '../../context/FiltersContext';
 import { useSelection } from '../../context/SelectionContext';
+import { useCampaign } from '../../context/CampaignContext';
 import { FilterBar } from '../filters/FilterBar';
 import { RadiusSlider } from '../controls/RadiusSlider';
-import { TerritoryMap } from '../map/TerritoryMap';
+// MapLibre is heavy (~700 KB). Lazy-load the map so the empty state and
+// upload flow don't pay for it.
+const TerritoryMap = lazy(() =>
+  import('../map/TerritoryMap').then((m) => ({ default: m.TerritoryMap }))
+);
 import { DetailPanel } from '../panel/DetailPanel';
 import { UploadSummary } from '../upload/UploadSummary';
 import { ConfirmDialog } from '../common/ConfirmDialog';
 import { useToast } from '../common/ToastProvider';
-import { useFilters as _useFilters } from '../../context/FiltersContext';
+import { SettingsButton } from '../settings/SettingsButton';
+import { SettingsDialog } from '../settings/SettingsDialog';
+import { CampaignDrawer } from '../campaign/CampaignDrawer';
+import { BullseyeLogo } from '../brand/BullseyeLogo';
+import { StatsStrip } from '../brand/StatsStrip';
 
 export function Shell() {
   const { dataset, uploadErrors, clearDataset } = useData();
-  const { filters } = useFilters();
-  const { resetFilters } = _useFilters();
+  const { filters, resetFilters } = useFilters();
   const { clearSelection, activeCustomerId } = useSelection();
+  const { clearSelection: clearCampaign } = useCampaign();
   const toast = useToast();
   const filtered = useFilteredCustomers(dataset?.customers ?? [], filters);
+
   const [confirmClear, setConfirmClear] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [settingsIntro, setSettingsIntro] = useState<string | undefined>(undefined);
+
+  const promptSettingsFromCampaign = useCallback(() => {
+    setSettingsIntro(
+      "Before sending, fill in your first name and signature. We use these to personalize every email."
+    );
+    setSettingsOpen(true);
+  }, []);
+
+  const closeSettings = useCallback(() => {
+    setSettingsOpen(false);
+    setSettingsIntro(undefined);
+  }, []);
 
   if (!dataset) return null;
 
@@ -32,29 +59,33 @@ export function Shell() {
     activeCustomerId !== null && !filtered.some((c) => c.id === activeCustomerId);
 
   return (
-    <div className="flex min-h-screen flex-col bg-slate-50">
-      <header className="sticky top-0 z-30 border-b border-slate-200 bg-white/95 backdrop-blur">
+    <div className="flex min-h-screen flex-col bg-slate-50 dark:bg-slate-950">
+      <header className="sticky top-0 z-30 border-b border-slate-200 bg-white/95 backdrop-blur dark:border-slate-800 dark:bg-slate-900/95">
         <div className="mx-auto flex w-full max-w-7xl flex-wrap items-center justify-between gap-3 px-4 py-3">
-          <div>
-            <h1 className="text-base font-semibold text-slate-900 sm:text-lg">
-              Sales Territory Map
-            </h1>
-            <p className="text-xs text-slate-600">
-              {dataset.customers.length} customer{dataset.customers.length === 1 ? '' : 's'} loaded
-              from <span className="font-medium">{dataset.sourceFilename}</span>
-            </p>
+          <div className="flex items-center gap-3">
+            <BullseyeLogo size={32} />
+            <div>
+              <h1 className="text-base font-semibold tracking-tight text-slate-900 dark:text-slate-100 sm:text-lg">
+                Bullseye Offense
+              </h1>
+              <p className="text-xs text-slate-600 dark:text-slate-400">
+                Every closed deal has a neighbor.
+              </p>
+            </div>
           </div>
           <div className="flex flex-wrap items-center gap-3">
             <RadiusSlider />
+            <SettingsButton onClick={() => setSettingsOpen(true)} />
             <button
               type="button"
               onClick={() => setConfirmClear(true)}
-              className="rounded-md border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-800 hover:bg-slate-50"
+              className="rounded-md border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-800 transition-colors hover:bg-slate-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-400 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
             >
-              Upload a different file
+              Replace file
             </button>
           </div>
         </div>
+        <StatsStrip dataset={dataset} />
       </header>
 
       <main className="mx-auto flex w-full max-w-7xl flex-1 flex-col gap-4 px-4 py-4">
@@ -67,7 +98,7 @@ export function Shell() {
         {activeHidden ? (
           <div
             role="alert"
-            className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900"
+            className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900 dark:border-amber-800 dark:bg-amber-900/30 dark:text-amber-100"
           >
             The selected customer is currently hidden by your filters. Adjust filters or close
             the panel to dismiss this message.
@@ -76,7 +107,15 @@ export function Shell() {
 
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_24rem]">
           <div className="h-[60vh] min-h-[24rem] lg:h-[calc(100vh-14rem)]">
-            <TerritoryMap customers={filtered} allCustomers={dataset.customers} />
+            <Suspense
+              fallback={
+                <div className="flex h-full items-center justify-center rounded-lg border border-dashed border-slate-300 bg-slate-100 text-sm text-slate-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-400">
+                  Loading map…
+                </div>
+              }
+            >
+              <TerritoryMap customers={filtered} allCustomers={dataset.customers} />
+            </Suspense>
           </div>
           <div className="lg:max-h-[calc(100vh-14rem)] lg:overflow-y-auto">
             <DetailPanel />
@@ -94,11 +133,15 @@ export function Shell() {
         onConfirm={async () => {
           setConfirmClear(false);
           clearSelection();
+          clearCampaign();
           await clearDataset();
           resetFilters();
           toast.show('info', 'Dataset cleared. Upload a new file to continue.');
         }}
       />
+
+      <SettingsDialog open={settingsOpen} onClose={closeSettings} introMessage={settingsIntro} />
+      <CampaignDrawer onPromptSettings={promptSettingsFromCampaign} />
     </div>
   );
 }
