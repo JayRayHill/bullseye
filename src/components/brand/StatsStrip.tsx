@@ -22,30 +22,25 @@ export function StatsStrip({ dataset }: { dataset: Dataset }) {
   const invalidCount = useCountUp(totals.invalid);
   return (
     <div className="border-t border-slate-200 bg-slate-50 px-4 py-2 text-xs dark:border-slate-800 dark:bg-slate-900/60">
-      <div className="mx-auto flex w-full max-w-7xl flex-wrap items-center gap-x-3 gap-y-1 text-slate-600 dark:text-slate-400">
+      <div className="mx-auto flex w-full max-w-7xl flex-wrap items-center gap-x-3 gap-y-1 tabular-nums text-slate-600 dark:text-slate-400">
+        {/* tabular-nums on the row container keeps digits a uniform width
+            across all chips during the count-up. We avoid wrapping the
+            numbers in their own <span> because the Chip uses inline-flex,
+            and a child <span> would become a separate flex item — flex
+            collapses whitespace between items, eating the space between
+            number and label. Single text flow inside each chip = space
+            preserved. */}
         <span className="font-semibold text-slate-900 dark:text-slate-100">
-          {/* tabular-nums keeps the number from jittering as digits change
-              width during the count-up (1 → 11 → 111 jumps without this). */}
-          <span className="tabular-nums">{nf.format(totalCount)}</span>{' '}
-          customer{dataset.customers.length === 1 ? '' : 's'}
+          {nf.format(totalCount)} customer{dataset.customers.length === 1 ? '' : 's'}
         </span>
         <Dot />
-        <Chip color="brand">
-          <span className="tabular-nums">{nf.format(closedCount)}</span> closed
-        </Chip>
+        <Chip color="brand">{nf.format(closedCount)} closed</Chip>
         <Chip color="lead">
-          <span className="tabular-nums">{nf.format(openCount)}</span> open
-          {' '}deal{totals.notClosed === 1 ? '' : 's'}
+          {nf.format(openCount)} open deal{totals.notClosed === 1 ? '' : 's'}
         </Chip>
-        {totals.lost > 0 ? (
-          <Chip color="lost">
-            <span className="tabular-nums">{nf.format(lostCount)}</span> lost
-          </Chip>
-        ) : null}
+        {totals.lost > 0 ? <Chip color="lost">{nf.format(lostCount)} lost</Chip> : null}
         {totals.invalid > 0 ? (
-          <Chip color="red">
-            <span className="tabular-nums">{nf.format(invalidCount)}</span> skipped
-          </Chip>
+          <Chip color="red">{nf.format(invalidCount)} skipped</Chip>
         ) : null}
         <span className="ml-auto truncate text-slate-500 dark:text-slate-500">
           from <span className="font-medium">{dataset.sourceFilename}</span>
