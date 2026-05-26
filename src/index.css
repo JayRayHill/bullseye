@@ -158,30 +158,25 @@
 
 /* Detail panel mount transition.
    IMPORTANT: the panel sits inside a parent with `lg:overflow-y-auto`,
-   which causes the browser to compute `overflow-x` as `auto` too — so
-   any translateX would get clipped off-screen, making the slide feel
-   like a flash. We avoid translate-on-X entirely here and use opacity +
-   scale + a tiny translateY (which the parent CAN scroll, so it's not
-   clipped). transform-origin: top right makes the scale grow from the
-   corner closest to the map, reading as "the panel just arrived from
-   where the customer was on the map" without literal motion outside
-   the box. 550ms is long enough to feel intentional but short enough
-   that it's never in the way of the next click. */
+   which causes the browser to compute `overflow-x` as `auto` too —
+   translateX gets clipped off-screen. We use scale + opacity instead
+   (no clipping, since scale stays within the final bounds). Tuned to
+   feel snappy: 280ms is the "fast but unmistakable" sweet spot for
+   panel-sized UI. Scale starts at 0.92 (visible jump without feeling
+   wobbly) anchored to top right so it grows from the corner closest
+   to the map. */
 @keyframes stm-panel-enter {
-  0% {
+  from {
     opacity: 0;
-    transform: scale(0.88) translateY(12px);
+    transform: scale(0.92);
   }
-  60% {
+  to {
     opacity: 1;
-  }
-  100% {
-    opacity: 1;
-    transform: scale(1) translateY(0);
+    transform: scale(1);
   }
 }
 .stm-panel-enter {
-  animation: stm-panel-enter 550ms cubic-bezier(0.16, 1, 0.3, 1) backwards;
+  animation: stm-panel-enter 280ms cubic-bezier(0.2, 0.8, 0.2, 1) backwards;
   transform-origin: top right;
   will-change: transform, opacity;
 }
