@@ -58,28 +58,27 @@ export function EmptyState() {
   };
 
   return (
-    <div className="mx-auto flex w-full max-w-5xl flex-col gap-8 px-4 py-12 sm:py-16">
+    // Tuned to fit fully above the fold on a standard ~768px laptop
+    // viewport: tighter outer padding (py-5 vs py-12), smaller hero,
+    // and a compact "How it works" row at the bottom. Same content
+    // hierarchy as before — every section still present, just denser.
+    <div className="mx-auto flex w-full max-w-5xl flex-col gap-4 px-4 py-5 sm:py-8">
       {/* Theme toggle floats top-right so first-time visitors can choose
           before loading any data. Once the Shell is mounted, the toggle
           lives in the main header instead. */}
       <div className="flex justify-end">
         <ThemeToggle />
       </div>
-      <header className="flex flex-col items-center gap-4 text-center">
-        <BullseyeLogo size={64} animated />
+      <header className="flex flex-col items-center gap-2 text-center">
+        <BullseyeLogo size={52} animated />
         <div>
-          <h1 className="text-4xl font-semibold tracking-tight text-slate-900 dark:text-slate-100 sm:text-5xl">
+          <h1 className="text-3xl font-semibold tracking-tight text-slate-900 dark:text-slate-100 sm:text-4xl">
             Bullseye Offense
           </h1>
-          <p className="mt-2 text-lg text-brand-700 dark:text-brand-300 sm:text-xl">
+          <p className="mt-1 text-base text-brand-700 dark:text-brand-300 sm:text-lg">
             Every closed deal has a neighbor.
           </p>
         </div>
-        <p className="max-w-xl text-sm text-slate-600 dark:text-slate-400 sm:text-base">
-          Plot your closed customers on a US map and surface the nearby
-          prospects who never quite closed — then email them using your
-          existing customer as social proof.
-        </p>
       </header>
 
       {/* Two CTAs side-by-side. The default-list card carries a
@@ -89,26 +88,26 @@ export function EmptyState() {
           to bring their own data. items-stretch + flex-1 inside each
           section keeps the two cards the same height so the rebalance
           reads as intentional. */}
-      <div className="grid grid-cols-1 items-stretch gap-4 md:grid-cols-2">
+      <div className="grid grid-cols-1 items-stretch gap-3 md:grid-cols-2">
         {/* Primary CTA — brand fill, inverted button for max contrast. */}
-        <section className="flex flex-col justify-between gap-5 rounded-2xl bg-brand-700 p-6 text-white shadow-md dark:bg-brand-600">
-          <div className="flex flex-col gap-2">
-            <p className="text-xs font-semibold uppercase tracking-wider text-brand-100 dark:text-brand-100">
+        <section className="flex flex-col justify-between gap-3 rounded-2xl bg-brand-700 p-5 text-white shadow-md dark:bg-brand-600">
+          <div className="flex flex-col gap-1.5">
+            <p className="text-[11px] font-semibold uppercase tracking-wider text-brand-100">
               For SDRs · Recommended
             </p>
-            <h2 className="text-2xl font-semibold tracking-tight">
+            <h2 className="text-xl font-semibold tracking-tight">
               Use the default list
             </h2>
-            <p className="text-sm leading-relaxed text-brand-50/95">
-              Start with our pre-loaded HubSpot customer list. No upload,
-              no column mapping — click and get to work.
+            <p className="text-sm leading-snug text-brand-50/95">
+              Pre-loaded HubSpot list. No upload, no column mapping —
+              click and get to work.
             </p>
           </div>
           <button
             type="button"
             onClick={onUseDefault}
             disabled={loadingDefault}
-            className="inline-flex items-center justify-center rounded-md bg-white px-4 py-2.5 text-sm font-semibold text-brand-800 shadow-sm transition-colors hover:bg-brand-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white disabled:opacity-70"
+            className="inline-flex items-center justify-center rounded-md bg-white px-4 py-2 text-sm font-semibold text-brand-800 shadow-sm transition-colors hover:bg-brand-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white disabled:opacity-70"
           >
             {loadingDefault ? 'Loading…' : 'Use the default list →'}
           </button>
@@ -116,75 +115,52 @@ export function EmptyState() {
 
         {/* Secondary CTA — neutral framing for the "I have my own data"
             path. Visually quieter than the brand-green card next to it. */}
-        <section className="flex flex-col justify-between gap-5 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900">
-          <div className="flex flex-col gap-2">
-            <p className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+        <section className="flex flex-col justify-between gap-3 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+          <div className="flex flex-col gap-1.5">
+            <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
               Have your own data
             </p>
-            <h2 className="text-2xl font-semibold tracking-tight text-slate-900 dark:text-slate-100">
+            <h2 className="text-xl font-semibold tracking-tight text-slate-900 dark:text-slate-100">
               Upload a file
             </h2>
-            <p className="text-sm leading-relaxed text-slate-600 dark:text-slate-400">
-              Working with a different segment? Drop a CSV or XLSX and
-              we&rsquo;ll auto-detect the columns.
+            <p className="text-sm leading-snug text-slate-600 dark:text-slate-400">
+              Drop a CSV or XLSX and we&rsquo;ll auto-detect the columns.
             </p>
           </div>
           <UploadDropzone />
         </section>
       </div>
 
-      <PrivacyBanner variant="inline" />
-
+      {/* Compact "How it works" — single horizontal row at sm+, stacks
+          at mobile. Tighter padding + numbered dots in a row save the
+          ~80px the previous 4-padded card consumed. */}
       <section
         aria-label="How it works"
-        className="rounded-2xl border border-slate-200 bg-white p-6 dark:border-slate-800 dark:bg-slate-900"
+        className="rounded-xl border border-slate-200 bg-white px-4 py-3 dark:border-slate-800 dark:bg-slate-900"
       >
-        <h2 className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
-          How it works
-        </h2>
-        <ol className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-3">
-          <Step
-            number={1}
-            title="Load a customer list"
-            body="Start with the default list or upload your own CSV / XLSX."
-          />
-          <Step
-            number={2}
-            title="Click a customer you closed"
-            body="Their nearby leads who never closed light up on the map and in the side panel."
-          />
-          <Step
-            number={3}
-            title="Email their neighbors"
-            body="Pick a template, hit Send via Gmail. Your closed customer becomes the proof point."
-          />
+        <ol className="flex flex-col gap-2 text-xs text-slate-600 dark:text-slate-400 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
+          <CompactStep number={1} text="Load a customer list" />
+          <CompactStep number={2} text="Click a closed customer" />
+          <CompactStep number={3} text="Email their neighbors" />
         </ol>
       </section>
+
+      <PrivacyBanner variant="inline" />
     </div>
   );
 }
 
-function Step({
-  number,
-  title,
-  body,
-}: {
-  number: number;
-  title: string;
-  body: string;
-}) {
+function CompactStep({ number, text }: { number: number; text: string }) {
   return (
-    <li className="flex gap-3">
+    <li className="flex items-center gap-2">
       <span
         aria-hidden="true"
-        className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-brand-700 text-sm font-semibold text-white dark:bg-brand-500"
+        className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-brand-700 text-[11px] font-semibold text-white dark:bg-brand-500"
       >
         {number}
       </span>
-      <div>
-        <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100">{title}</h3>
-        <p className="mt-1 text-xs text-slate-600 dark:text-slate-400">{body}</p>
-      </div>
+      <span>{text}</span>
     </li>
   );
 }
+
