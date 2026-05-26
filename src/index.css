@@ -143,10 +143,34 @@
   will-change: transform, opacity;
 }
 
+/* Indeterminate progress bar — the chunk slides from off-left to off-right
+   on a loop. Two-phase ease makes the sweep feel deliberate rather than a
+   mechanical linear ramp: slow start, fast middle, gentle exit. */
+@keyframes stm-top-progress {
+  0% {
+    transform: translateX(-100%);
+  }
+  60% {
+    transform: translateX(180%);
+  }
+  100% {
+    transform: translateX(280%);
+  }
+}
+.stm-top-progress-chunk {
+  animation: stm-top-progress 1.4s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .stm-lead-pin-enter,
   .stm-bullseye-ring,
-  .stm-panel-enter {
+  .stm-panel-enter,
+  .stm-top-progress-chunk {
     animation: none !important;
+  }
+  /* Reduced-motion fallback: hold the chunk in the middle so users still
+     get a visible "something is happening" indicator without animation. */
+  .stm-top-progress-chunk {
+    transform: translateX(100%);
   }
 }

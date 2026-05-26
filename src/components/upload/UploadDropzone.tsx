@@ -10,6 +10,7 @@ import { parseXlsxFile } from '../../lib/parsing/parseXlsx';
 import { autoDetectColumns } from '../../lib/parsing/autoDetectColumns';
 import { useToast } from '../common/ToastProvider';
 import { useUpload } from './UploadContext';
+import { showLoadingBar, hideLoadingBar } from '../../lib/loading';
 
 export function UploadDropzone() {
   const inputRef = useRef<HTMLInputElement | null>(null);
@@ -32,6 +33,7 @@ export function UploadDropzone() {
         if (!confirmed) return;
       }
       setBusy(true);
+      showLoadingBar(`Parsing ${file.name}…`);
       try {
         const parsed = kind === 'csv' ? await parseCsvFile(file) : await parseXlsxFile(file);
         if (!parsed.headers.length || !parsed.rows.length) {
@@ -56,6 +58,7 @@ export function UploadDropzone() {
         toast.show('error', message);
       } finally {
         setBusy(false);
+        hideLoadingBar();
       }
     },
     [toast, startMapping]

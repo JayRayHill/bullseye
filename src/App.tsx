@@ -17,6 +17,7 @@ import { SentHistoryProvider } from './context/SentHistoryContext';
 import { NotesProvider } from './context/NotesContext';
 import { ThemeProvider } from './context/ThemeContext';
 import { ToastProvider } from './components/common/ToastProvider';
+import { TopProgressBar } from './components/common/TopProgressBar';
 import { UploadProvider } from './components/upload/UploadContext';
 import { ColumnMappingForm } from './components/upload/ColumnMappingForm';
 import { EmptyState } from './components/common/EmptyState';
@@ -46,6 +47,7 @@ function AppRoot() {
     <>
       {dataset ? <Shell /> : <EmptyState />}
       <ColumnMappingForm />
+      <TopProgressBar />
     </>
   );
 }

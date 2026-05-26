@@ -12,6 +12,7 @@ import { useData } from '../../context/DataContext';
 import { useZipCoords, loadZipCoords } from '../../hooks/useZipCoords';
 import { normalizeRows } from '../../lib/parsing/normalizeRow';
 import { useToast } from '../common/ToastProvider';
+import { showLoadingBar, hideLoadingBar } from '../../lib/loading';
 
 const FIELD_LABELS: Record<CanonicalField, string> = {
   business_name: 'Business name',
@@ -73,6 +74,12 @@ export function ColumnMappingForm() {
     }
     const coords = zipCoords ?? (await loadZipCoords());
     setBusy(true);
+    showLoadingBar('Loading customer data…');
+    // Yield to the browser so the loading bar paints BEFORE we start the
+    // (potentially long) synchronous normalize loop. Without this yield the
+    // user sees the bar appear AFTER normalize finishes, defeating the
+    // point of the feedback.
+    await new Promise((resolve) => requestAnimationFrame(() => resolve(null)));
     try {
       const { dataset, errors } = normalizeRows(
         pending.rows,
@@ -100,6 +107,7 @@ export function ColumnMappingForm() {
       );
     } finally {
       setBusy(false);
+      hideLoadingBar();
     }
   };
 
