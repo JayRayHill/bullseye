@@ -33,7 +33,16 @@ import { stableHash } from '../../utils/fuzzyMatch';
  *  cell is empty, fall back through the alternates (in priority order). This
  *  recovers values when a HubSpot contact-side column is empty but the
  *  company-side column has the data, without affecting rows where the
- *  primary column has its expected value. */
+ *  primary column has its expected value.
+ *
+ *  IMPORTANT: deal_value is excluded from the per-row fallback. REAL LTV is
+ *  the user's authoritative closed-deal signal — and HubSpot exports often
+ *  carry several "amount"/"value"/"revenue" columns alongside it that are
+ *  forecasted figures on OPEN deals, not closed-deal LTV. Letting the
+ *  fallback pick those up inflated the closed count by ~300 in real-world
+ *  data. For deal_value we honor only the explicitly mapped column. */
+const NO_FALLBACK_FIELDS = new Set<CanonicalField>(['deal_value']);
+
 function readField(
   row: RawRow,
   mapping: ColumnMapping,
@@ -45,6 +54,7 @@ function readField(
     const v = row[primary];
     if (v != null && String(v).trim() !== '') return String(v);
   }
+  if (NO_FALLBACK_FIELDS.has(key)) return '';
   const alts = alternates?.[key];
   if (alts) {
     for (const alt of alts) {

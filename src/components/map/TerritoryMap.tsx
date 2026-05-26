@@ -64,13 +64,12 @@ const RADIUS_SOURCE = 'radius-preview';
 const RADIUS_FILL_LAYER = 'radius-preview-fill';
 const RADIUS_LINE_LAYER = 'radius-preview-line';
 
-// How long the radius preview circle stays visible after the rep stops
-// changing the slider or selection. Tuned to "saw it" without "kept staring."
-const RADIUS_FADE_DELAY_MS = 1500;
-
 // Visibility opacities (high = visible, low = invisible). Light mode keeps
 // the circle very gentle; dark mode bumps both stroke and fill slightly so
-// it reads against the warm Dark Matter tiles.
+// it reads against the warm Dark Matter tiles. The circle stays visible
+// the whole time a customer is selected — it's the territory boundary, not
+// a transient hint, so it shouldn't time out and surprise the user when
+// they pan/zoom to inspect it.
 const RADIUS_OPACITY = {
   light: { fill: 0.08, line: 0.65 },
   dark:  { fill: 0.14, line: 0.8 },
@@ -468,9 +467,11 @@ export function TerritoryMap({ customers, allCustomers }: TerritoryMapProps) {
   }, [activeCustomerId, allCustomers]);
 
   // ---- 5b. Radius preview circle — translucent overlay showing the
-  // current search radius around the active customer. Appears on selection
-  // or slider drag; fades out RADIUS_FADE_DELAY_MS after the last change.
-  const radiusFadeOutTimer = useRef<number | null>(null);
+  // current search radius around the active customer. Visible the entire
+  // time a customer is selected; cleared on deselect. The slider live-
+  // updates the polygon so the circle grows/shrinks in place as the rep
+  // drags. No auto-fade — the circle is the active customer's territory
+  // boundary, and reps need to pan/zoom around it without it vanishing.
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !styleLoadedRef.current) return;
@@ -483,10 +484,6 @@ export function TerritoryMap({ customers, allCustomers }: TerritoryMapProps) {
       source.setData({ type: 'FeatureCollection', features: [] });
       map.setPaintProperty(RADIUS_FILL_LAYER, 'fill-opacity', 0);
       map.setPaintProperty(RADIUS_LINE_LAYER, 'line-opacity', 0);
-      if (radiusFadeOutTimer.current !== null) {
-        window.clearTimeout(radiusFadeOutTimer.current);
-        radiusFadeOutTimer.current = null;
-      }
       return;
     }
 
@@ -504,30 +501,11 @@ export function TerritoryMap({ customers, allCustomers }: TerritoryMapProps) {
       features: [{ type: 'Feature', properties: {}, geometry: polygon }],
     });
 
-    // Show with the theme-appropriate opacity.
+    // Show with the theme-appropriate opacity. Stays visible until the
+    // active customer is cleared.
     const op = isDark ? RADIUS_OPACITY.dark : RADIUS_OPACITY.light;
     map.setPaintProperty(RADIUS_FILL_LAYER, 'fill-opacity', op.fill);
     map.setPaintProperty(RADIUS_LINE_LAYER, 'line-opacity', op.line);
-
-    // Reset the fade-out timer — every slider tick or selection change
-    // re-arms it so the circle stays visible while the rep is engaged.
-    if (radiusFadeOutTimer.current !== null) {
-      window.clearTimeout(radiusFadeOutTimer.current);
-    }
-    radiusFadeOutTimer.current = window.setTimeout(() => {
-      const m = mapRef.current;
-      if (!m || !styleLoadedRef.current) return;
-      m.setPaintProperty(RADIUS_FILL_LAYER, 'fill-opacity', 0);
-      m.setPaintProperty(RADIUS_LINE_LAYER, 'line-opacity', 0);
-      radiusFadeOutTimer.current = null;
-    }, RADIUS_FADE_DELAY_MS);
-
-    return () => {
-      if (radiusFadeOutTimer.current !== null) {
-        window.clearTimeout(radiusFadeOutTimer.current);
-        radiusFadeOutTimer.current = null;
-      }
-    };
   }, [activeCustomerId, allCustomers, filters.radiusMiles, isDark]);
 
   // ---- 6. HTML markers for the small dynamic lead set ----
