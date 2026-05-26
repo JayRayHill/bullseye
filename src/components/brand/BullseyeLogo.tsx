@@ -34,6 +34,13 @@ export function BullseyeLogo({
       width={size}
       height={size}
       viewBox="0 0 32 32"
+      // overflow=visible lets the easeOutBack animation's brief
+      // scale(>1) overshoot paint past the viewBox edges instead of
+      // getting clipped — that clip was visible as the outer ring
+      // briefly cutting off at its peak. The painted bounding box
+      // stays the same (no layout shift), only the paint surface
+      // expands during the animation peak.
+      overflow="visible"
       role="img"
       aria-label={title}
       className={className}
