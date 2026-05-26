@@ -3,12 +3,11 @@
 // allow multi-select; deal-value range uses two number inputs with explicit
 // nullable behavior.
 
-import { useEffect, useMemo } from 'react';
+import { useMemo } from 'react';
 import clsx from 'clsx';
 import { useFilters } from '../../context/FiltersContext';
 import type { DealStatus } from '../../types';
 import { useData } from '../../context/DataContext';
-import { CustomerSearch } from '../layout/CustomerSearch';
 
 // Status chips reuse the semantic pin palette so the filter visually maps to
 // the map. Active state adds a thick brand-tinted ring. The Lost chip only
@@ -40,15 +39,6 @@ export function FilterBar() {
   const { filters, setSearch, toggleState, toggleStatus, setDealValueRange, resetFilters } =
     useFilters();
 
-  // The text-search filter was removed when the header search bar landed —
-  // the two were visually identical and conceptually overlapping. Clear any
-  // legacy persisted search term so a previously-filtered map doesn't
-  // mysteriously stay narrowed after the input vanishes.
-  useEffect(() => {
-    if (filters.search) setSearch('');
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
   const availableStates = useMemo(() => {
     if (!dataset) return [];
     const s = new Set<string>();
@@ -59,6 +49,7 @@ export function FilterBar() {
   }, [dataset]);
 
   const filtersActive =
+    filters.search ||
     filters.states.length ||
     filters.statuses.length ||
     filters.dealValueRange[0] !== null ||
@@ -66,13 +57,14 @@ export function FilterBar() {
 
   return (
     <div className="flex flex-wrap items-center gap-3 rounded-xl border border-slate-200 bg-white p-3 shadow-sm dark:border-slate-800 dark:bg-slate-900">
-      {/* CustomerSearch was briefly in the page header but the position
-          felt cramped between brand + controls on narrow viewports. The
-          FilterBar's flex-wrap layout has always been the right home for
-          full-width inputs that need to share space with chip filters.
-          ⌘K still focuses it from anywhere (window-level listener inside
-          the component). */}
-      <CustomerSearch />
+      <input
+        type="search"
+        value={filters.search}
+        onChange={(e) => setSearch(e.target.value)}
+        placeholder="Search business or city"
+        aria-label="Search by business name or city"
+        className="min-w-[14rem] flex-1 rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm shadow-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:placeholder:text-slate-500"
+      />
 
       <div className="flex items-center gap-1" role="group" aria-label="Deal status filter">
         {STATUS_CHIPS.map((chip) => {
