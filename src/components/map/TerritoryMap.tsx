@@ -44,6 +44,7 @@ import { useCampaign } from '../../context/CampaignContext';
 import { useNearbyLeads } from '../../hooks/useNearbyLeads';
 import { useFilters } from '../../context/FiltersContext';
 import { useTheme } from '../../context/ThemeContext';
+import { geographicCirclePolygon } from '../../lib/geo/circleGeometry';
 import { loadPinImages, PIN_SVGS } from './icons';
 
 const DEFAULT_CENTER: [number, number] = [-98.35, 39.5]; // MapLibre uses [lng, lat]
@@ -59,6 +60,21 @@ const STATES_LAYER = 'us-state-borders';
 const CLUSTER_LAYER = 'cluster-circles';
 const CLUSTER_COUNT_LAYER = 'cluster-count';
 const CUSTOMER_LAYER = 'customer-pins';
+const RADIUS_SOURCE = 'radius-preview';
+const RADIUS_FILL_LAYER = 'radius-preview-fill';
+const RADIUS_LINE_LAYER = 'radius-preview-line';
+
+// How long the radius preview circle stays visible after the rep stops
+// changing the slider or selection. Tuned to "saw it" without "kept staring."
+const RADIUS_FADE_DELAY_MS = 1500;
+
+// Visibility opacities (high = visible, low = invisible). Light mode keeps
+// the circle very gentle; dark mode bumps both stroke and fill slightly so
+// it reads against the warm Dark Matter tiles.
+const RADIUS_OPACITY = {
+  light: { fill: 0.08, line: 0.65 },
+  dark:  { fill: 0.14, line: 0.8 },
+} as const;
 
 interface TerritoryMapProps {
   /** Customers passing the user's filters; closed + lost go in clusters. */
@@ -180,6 +196,45 @@ export function TerritoryMap({ customers, allCustomers }: TerritoryMapProps) {
       });
     }
 
+    // Radius preview overlay — translucent circle around the active customer
+    // that visualizes the search radius. Layers go in BEFORE the customer
+    // pins so the circle sits beneath them (pins stay clickable above).
+    // Initial opacity is 0; the radius-visibility effect bumps it when the
+    // rep selects a customer or moves the slider. The paint-property
+    // transition makes the change ease smoothly (~220ms).
+    if (!map.getSource(RADIUS_SOURCE)) {
+      map.addSource(RADIUS_SOURCE, {
+        type: 'geojson',
+        data: { type: 'FeatureCollection', features: [] },
+      });
+    }
+    if (!map.getLayer(RADIUS_FILL_LAYER)) {
+      map.addLayer({
+        id: RADIUS_FILL_LAYER,
+        type: 'fill',
+        source: RADIUS_SOURCE,
+        paint: {
+          'fill-color': '#0c5f3f',
+          'fill-opacity': 0,
+          'fill-opacity-transition': { duration: 220, delay: 0 },
+        },
+      });
+    }
+    if (!map.getLayer(RADIUS_LINE_LAYER)) {
+      map.addLayer({
+        id: RADIUS_LINE_LAYER,
+        type: 'line',
+        source: RADIUS_SOURCE,
+        paint: {
+          'line-color': isDark ? '#74d2a4' : '#0c5f3f',
+          'line-width': 1.5,
+          'line-dasharray': [3, 2],
+          'line-opacity': 0,
+          'line-opacity-transition': { duration: 220, delay: 0 },
+        },
+      });
+    }
+
     if (!map.getSource(CUSTOMERS_SOURCE)) {
       map.addSource(CUSTOMERS_SOURCE, {
         type: 'geojson',
@@ -202,6 +257,9 @@ export function TerritoryMap({ customers, allCustomers }: TerritoryMapProps) {
           'circle-radius': ['step', ['get', 'point_count'], 16, 10, 22, 100, 28],
           'circle-stroke-width': 2,
           'circle-stroke-color': isDark ? '#0a1f17' : '#ffffff',
+          // Smooth zoom-driven size changes (cluster recompute can jump
+          // sizes; the transition keeps motion intentional).
+          'circle-radius-transition': { duration: 150, delay: 0 },
         },
       });
     }
@@ -408,6 +466,69 @@ export function TerritoryMap({ customers, allCustomers }: TerritoryMapProps) {
       essential: true,
     });
   }, [activeCustomerId, allCustomers]);
+
+  // ---- 5b. Radius preview circle — translucent overlay showing the
+  // current search radius around the active customer. Appears on selection
+  // or slider drag; fades out RADIUS_FADE_DELAY_MS after the last change.
+  const radiusFadeOutTimer = useRef<number | null>(null);
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !styleLoadedRef.current) return;
+
+    const source = map.getSource(RADIUS_SOURCE) as GeoJSONSource | undefined;
+    if (!source) return;
+
+    // No active customer → clear the circle immediately + hide.
+    if (!activeCustomerId) {
+      source.setData({ type: 'FeatureCollection', features: [] });
+      map.setPaintProperty(RADIUS_FILL_LAYER, 'fill-opacity', 0);
+      map.setPaintProperty(RADIUS_LINE_LAYER, 'line-opacity', 0);
+      if (radiusFadeOutTimer.current !== null) {
+        window.clearTimeout(radiusFadeOutTimer.current);
+        radiusFadeOutTimer.current = null;
+      }
+      return;
+    }
+
+    const active = allCustomers.find((c) => c.id === activeCustomerId);
+    if (!active) return;
+
+    // Update the circle geometry to match current center + radius.
+    const polygon = geographicCirclePolygon(
+      active.lng,
+      active.lat,
+      filters.radiusMiles
+    );
+    source.setData({
+      type: 'FeatureCollection',
+      features: [{ type: 'Feature', properties: {}, geometry: polygon }],
+    });
+
+    // Show with the theme-appropriate opacity.
+    const op = isDark ? RADIUS_OPACITY.dark : RADIUS_OPACITY.light;
+    map.setPaintProperty(RADIUS_FILL_LAYER, 'fill-opacity', op.fill);
+    map.setPaintProperty(RADIUS_LINE_LAYER, 'line-opacity', op.line);
+
+    // Reset the fade-out timer — every slider tick or selection change
+    // re-arms it so the circle stays visible while the rep is engaged.
+    if (radiusFadeOutTimer.current !== null) {
+      window.clearTimeout(radiusFadeOutTimer.current);
+    }
+    radiusFadeOutTimer.current = window.setTimeout(() => {
+      const m = mapRef.current;
+      if (!m || !styleLoadedRef.current) return;
+      m.setPaintProperty(RADIUS_FILL_LAYER, 'fill-opacity', 0);
+      m.setPaintProperty(RADIUS_LINE_LAYER, 'line-opacity', 0);
+      radiusFadeOutTimer.current = null;
+    }, RADIUS_FADE_DELAY_MS);
+
+    return () => {
+      if (radiusFadeOutTimer.current !== null) {
+        window.clearTimeout(radiusFadeOutTimer.current);
+        radiusFadeOutTimer.current = null;
+      }
+    };
+  }, [activeCustomerId, allCustomers, filters.radiusMiles, isDark]);
 
   // ---- 6. HTML markers for the small dynamic lead set ----
   useEffect(() => {
