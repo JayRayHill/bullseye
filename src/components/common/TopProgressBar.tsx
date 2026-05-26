@@ -36,8 +36,8 @@ export function TopProgressBar() {
       aria-label={label || 'Loading'}
       className="pointer-events-none fixed inset-x-0 top-0 z-[100] flex flex-col items-center"
     >
-      <div className="relative h-[3px] w-full overflow-hidden bg-brand-100/60 dark:bg-brand-900/40">
-        <div className="stm-top-progress-chunk absolute inset-y-0 w-1/3 rounded-full bg-brand-700 dark:bg-brand-400" />
+      <div className="relative h-[6px] w-full overflow-hidden bg-brand-200/70 shadow-sm dark:bg-brand-900/60">
+        <div className="stm-top-progress-chunk absolute inset-y-0 w-2/5 rounded-full bg-brand-700 dark:bg-brand-400" />
       </div>
       {label ? (
         <div className="mt-2 rounded-full bg-slate-900/90 px-3 py-1 text-xs font-medium text-white shadow-lg backdrop-blur dark:bg-slate-100/90 dark:text-slate-900">
