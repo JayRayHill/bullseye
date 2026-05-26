@@ -1,13 +1,12 @@
 // Root component. Composes providers in order of dependency:
-//   Toast → Data → Filters → Selection → Settings → Campaign → SentHistory → Notes → Upload.
-// CampaignProvider depends on Settings (for the default template id) so it sits
-// just below it via a tiny wrapper component that reads settings synchronously.
-// SentHistoryProvider sits between Campaign and Notes so the campaign drawer
-// and the leads list can both read/write the dedup log. NotesProvider is
-// independent — sits anywhere below DataProvider — but we nest it close to
-// the other per-customer persistence providers for cohesion.
+//   Theme → Auth → Toast → Data → Filters → Selection → Settings → Campaign
+//                                                   → SentHistory → Notes → Upload.
+// AuthProvider sits as high as possible so the SignIn gate doesn't need
+// any of the data-layer providers loaded. Everything below the gate
+// only renders once the rep is signed in.
 
 import { type ReactNode } from 'react';
+import { AuthProvider, useAuth } from './context/AuthContext';
 import { DataProvider, useData } from './context/DataContext';
 import { FiltersProvider } from './context/FiltersContext';
 import { SelectionProvider } from './context/SelectionContext';
@@ -22,6 +21,7 @@ import { UploadProvider } from './components/upload/UploadContext';
 import { ColumnMappingForm } from './components/upload/ColumnMappingForm';
 import { EmptyState } from './components/common/EmptyState';
 import { Shell } from './components/layout/Shell';
+import { SignIn } from './components/auth/SignIn';
 
 function CampaignWithDefaultTemplate({ children }: { children: ReactNode }) {
   const { settings } = useSettings();
@@ -47,33 +47,54 @@ function AppRoot() {
     <>
       {dataset ? <Shell /> : <EmptyState />}
       <ColumnMappingForm />
-      <TopProgressBar />
     </>
+  );
+}
+
+/** Renders the SignIn gate when not authed; otherwise lets the full
+ *  provider stack mount. TopProgressBar lives at the very top so it
+ *  works during sign-in too (theoretical — sign-in itself has no slow
+ *  work — but cheap insurance). */
+function AuthGate() {
+  const { isAuthed } = useAuth();
+  if (!isAuthed) {
+    return (
+      <>
+        <SignIn />
+        <TopProgressBar />
+      </>
+    );
+  }
+  return (
+    <ToastProvider>
+      <DataProvider>
+        <FiltersProvider>
+          <SelectionProvider>
+            <SettingsProvider>
+              <CampaignWithDefaultTemplate>
+                <SentHistoryProvider>
+                  <NotesProvider>
+                    <UploadProvider>
+                      <AppRoot />
+                    </UploadProvider>
+                  </NotesProvider>
+                </SentHistoryProvider>
+              </CampaignWithDefaultTemplate>
+            </SettingsProvider>
+          </SelectionProvider>
+        </FiltersProvider>
+      </DataProvider>
+      <TopProgressBar />
+    </ToastProvider>
   );
 }
 
 export default function App() {
   return (
     <ThemeProvider>
-      <ToastProvider>
-        <DataProvider>
-          <FiltersProvider>
-            <SelectionProvider>
-              <SettingsProvider>
-                <CampaignWithDefaultTemplate>
-                  <SentHistoryProvider>
-                    <NotesProvider>
-                      <UploadProvider>
-                        <AppRoot />
-                      </UploadProvider>
-                    </NotesProvider>
-                  </SentHistoryProvider>
-                </CampaignWithDefaultTemplate>
-              </SettingsProvider>
-            </SelectionProvider>
-          </FiltersProvider>
-        </DataProvider>
-      </ToastProvider>
+      <AuthProvider>
+        <AuthGate />
+      </AuthProvider>
     </ThemeProvider>
   );
 }

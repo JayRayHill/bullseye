@@ -6,6 +6,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useSettings } from '../../context/SettingsContext';
 import { useSentHistory } from '../../context/SentHistoryContext';
+import { useAuth } from '../../context/AuthContext';
 import { EMAIL_TEMPLATES, findTemplate } from '../../lib/email/templates';
 import { daysSince, SENT_COOLDOWN_DAYS } from '../../lib/email/sentHistory';
 
@@ -231,24 +232,53 @@ export function SettingsDialog({
           </details>
         </div>
 
-        <div className="mt-6 flex justify-end gap-2">
-          <button
-            type="button"
-            onClick={onClose}
-            className="rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm font-medium text-slate-800 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
-          >
-            Cancel
-          </button>
-          <button
-            type="button"
-            onClick={onSave}
-            disabled={!firstName.trim()}
-            className="rounded-md bg-brand-700 px-4 py-1.5 text-sm font-medium text-white hover:bg-brand-800 disabled:opacity-60 dark:bg-brand-600 dark:hover:bg-brand-500"
-          >
-            Save
-          </button>
+        <div className="mt-6 flex items-center justify-between gap-2">
+          {/* Sign-out lives at the bottom-left so it's available but not
+              competing with the primary save action. Clears the auth
+              flag → the AuthGate routes the rep back to SignIn. */}
+          <SignOutLink onClose={onClose} />
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={onClose}
+              className="rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm font-medium text-slate-800 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              onClick={onSave}
+              disabled={!firstName.trim()}
+              className="rounded-md bg-brand-700 px-4 py-1.5 text-sm font-medium text-white hover:bg-brand-800 disabled:opacity-60 dark:bg-brand-600 dark:hover:bg-brand-500"
+            >
+              Save
+            </button>
+          </div>
         </div>
       </div>
     </dialog>
+  );
+}
+
+/** Small sign-out link in the SettingsDialog footer. Confirms before
+ *  clearing so a stray click doesn't accidentally lock the rep out. */
+function SignOutLink({ onClose }: { onClose: () => void }) {
+  const { signOut } = useAuth();
+  const onClick = () => {
+    const ok = window.confirm(
+      'Sign out of Bullseye Offense? You’ll need the team password to get back in.'
+    );
+    if (!ok) return;
+    onClose();
+    signOut();
+  };
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="text-xs text-slate-500 underline hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-200"
+    >
+      Sign out
+    </button>
   );
 }
