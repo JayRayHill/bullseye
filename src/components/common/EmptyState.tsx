@@ -131,35 +131,58 @@ export function EmptyState() {
         </section>
       </div>
 
-      {/* Compact "How it works" — single horizontal row at sm+, stacks
-          at mobile. Tighter padding + numbered dots in a row save the
-          ~80px the previous 4-padded card consumed. */}
+      <PrivacyBanner variant="inline" />
+
       <section
         aria-label="How it works"
-        className="rounded-xl border border-slate-200 bg-white px-4 py-3 dark:border-slate-800 dark:bg-slate-900"
+        className="rounded-2xl border border-slate-200 bg-white p-6 dark:border-slate-800 dark:bg-slate-900"
       >
-        <ol className="flex flex-col gap-2 text-xs text-slate-600 dark:text-slate-400 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
-          <CompactStep number={1} text="Load a customer list" />
-          <CompactStep number={2} text="Click a closed customer" />
-          <CompactStep number={3} text="Email their neighbors" />
+        <h2 className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+          How it works
+        </h2>
+        <ol className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-3">
+          <Step
+            number={1}
+            title="Load a customer list"
+            body="Start with the default list or upload your own CSV / XLSX."
+          />
+          <Step
+            number={2}
+            title="Click a customer you closed"
+            body="Their nearby leads who never closed light up on the map and in the side panel."
+          />
+          <Step
+            number={3}
+            title="Email their neighbors"
+            body="Pick a template, hit Send via Gmail. Your closed customer becomes the proof point."
+          />
         </ol>
       </section>
-
-      <PrivacyBanner variant="inline" />
     </div>
   );
 }
 
-function CompactStep({ number, text }: { number: number; text: string }) {
+function Step({
+  number,
+  title,
+  body,
+}: {
+  number: number;
+  title: string;
+  body: string;
+}) {
   return (
-    <li className="flex items-center gap-2">
+    <li className="flex gap-3">
       <span
         aria-hidden="true"
-        className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-brand-700 text-[11px] font-semibold text-white dark:bg-brand-500"
+        className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-brand-700 text-sm font-semibold text-white dark:bg-brand-500"
       >
         {number}
       </span>
-      <span>{text}</span>
+      <div>
+        <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100">{title}</h3>
+        <p className="mt-1 text-xs text-slate-600 dark:text-slate-400">{body}</p>
+      </div>
     </li>
   );
 }
