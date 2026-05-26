@@ -21,6 +21,7 @@ import {
 import { useCampaign } from '../../context/CampaignContext';
 import { useSentHistory } from '../../context/SentHistoryContext';
 import { useToast } from '../common/ToastProvider';
+import { isValidEmail } from '../../lib/email/validation';
 
 interface SendActionsProps {
   selectedLeads: NearbyLead[];
@@ -43,14 +44,38 @@ export function SendActions({ selectedLeads, anchor, settings }: SendActionsProp
     body: customizedBody ?? template.body,
   };
 
+  // Pre-flight categorization — each selected lead falls into exactly one
+  // bucket so the rep gets a clear "X going, Y skipped (why)" breakdown
+  // BEFORE the send happens. Replaces the older flat "X recipients ready"
+  // message that hid the reasons rows were dropped.
+  const preflight = useMemo(() => {
+    const valid: NearbyLead[] = [];
+    const invalidFormat: NearbyLead[] = [];
+    const missingEmail: NearbyLead[] = [];
+    for (const lead of selectedLeads) {
+      const raw = lead.customer.email?.trim();
+      if (!raw) {
+        missingEmail.push(lead);
+      } else if (!isValidEmail(raw)) {
+        invalidFormat.push(lead);
+      } else {
+        valid.push(lead);
+      }
+    }
+    return { valid, invalidFormat, missingEmail };
+  }, [selectedLeads]);
+
   const recipientEmails = useMemo(
-    () => selectedLeads.map((l) => l.customer.email).filter((e): e is string => !!e),
-    [selectedLeads]
+    () =>
+      preflight.valid
+        .map((l) => l.customer.email)
+        .filter((e): e is string => !!e),
+    [preflight]
   );
 
   const onSendGmail = () => {
-    if (recipientEmails.length === 0 || !selectedLeads[0]) return;
-    const first = selectedLeads[0];
+    if (recipientEmails.length === 0 || !preflight.valid[0]) return;
+    const first = preflight.valid[0];
     const filled = fillMergeFields(composedTemplate, {
       lead: first.customer,
       anchor,
@@ -66,11 +91,9 @@ export function SendActions({ selectedLeads, anchor, settings }: SendActionsProp
     for (const batch of batches) {
       window.open(batch.url, '_blank', 'noopener');
     }
-    // Record every recipient that actually had an email address. The rep can
-    // clear false records in Settings if they abandoned the compose tab.
-    const sentCustomers = selectedLeads
-      .filter((l) => !!l.customer.email)
-      .map((l) => l.customer);
+    // Record only the leads we actually opened in Gmail (valid emails). Reps
+    // can clear false records in Settings if they abandoned a compose tab.
+    const sentCustomers = preflight.valid.map((l) => l.customer);
     recordSent({ leads: sentCustomers, anchor, template, method: 'gmail' });
     if (batches.length > 1) {
       toast.show(
@@ -83,7 +106,9 @@ export function SendActions({ selectedLeads, anchor, settings }: SendActionsProp
   };
 
   const onStartMailtoStepper = () => {
-    if (selectedLeads.length === 0) return;
+    // Stepper only walks the leads with deliverable emails — no point opening
+    // a mailto with a blank/garbage `to:` field.
+    if (preflight.valid.length === 0) return;
     recordedRef.current = new Set();
     setStepperIndex(0);
     openMailtoForIndex(0);
@@ -103,7 +128,7 @@ export function SendActions({ selectedLeads, anchor, settings }: SendActionsProp
   };
 
   const openMailtoForIndex = (i: number) => {
-    const lead = selectedLeads[i];
+    const lead = preflight.valid[i];
     if (!lead || !lead.customer.email) return;
     const filled = fillMergeFields(composedTemplate, {
       lead: lead.customer,
@@ -128,12 +153,12 @@ export function SendActions({ selectedLeads, anchor, settings }: SendActionsProp
     if (stepperIndex === null) return;
     // Record the lead we just sent before advancing. If the rep skipped past
     // someone without actually sending, they can clear it from Settings.
-    const justSent = selectedLeads[stepperIndex];
+    const justSent = preflight.valid[stepperIndex];
     if (justSent) recordIfUnseen(justSent);
     const next = stepperIndex + 1;
-    if (next >= selectedLeads.length) {
+    if (next >= preflight.valid.length) {
       setStepperIndex(null);
-      toast.show('info', `Stepped through ${selectedLeads.length} leads. Nice work.`);
+      toast.show('info', `Stepped through ${preflight.valid.length} leads. Nice work.`);
       return;
     }
     setStepperIndex(next);
@@ -141,8 +166,8 @@ export function SendActions({ selectedLeads, anchor, settings }: SendActionsProp
   };
 
   if (stepperIndex !== null) {
-    const lead = selectedLeads[stepperIndex];
-    const progressPct = ((stepperIndex + 1) / selectedLeads.length) * 100;
+    const lead = preflight.valid[stepperIndex];
+    const progressPct = ((stepperIndex + 1) / preflight.valid.length) * 100;
     return (
       <div className="border-t border-slate-200 bg-slate-50 dark:border-slate-800 dark:bg-slate-950">
         {/* Progress bar across the top of the stepper. */}
@@ -154,7 +179,7 @@ export function SendActions({ selectedLeads, anchor, settings }: SendActionsProp
         </div>
         <div className="p-3">
           <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
-            Lead {stepperIndex + 1} of {selectedLeads.length}
+            Lead {stepperIndex + 1} of {preflight.valid.length}
           </p>
           <p className="mt-1 text-sm text-slate-900 dark:text-slate-100">
             {lead?.customer.business_name} —{' '}
@@ -176,7 +201,7 @@ export function SendActions({ selectedLeads, anchor, settings }: SendActionsProp
               onClick={onNext}
               className="rounded-md bg-brand-700 px-3 py-1.5 text-xs font-medium text-white hover:bg-brand-800 dark:bg-brand-600 dark:hover:bg-brand-500"
             >
-              {stepperIndex + 1 >= selectedLeads.length ? 'Finish' : 'Next lead →'}
+              {stepperIndex + 1 >= preflight.valid.length ? 'Finish' : 'Next lead →'}
             </button>
             <button
               type="button"
@@ -191,20 +216,71 @@ export function SendActions({ selectedLeads, anchor, settings }: SendActionsProp
     );
   }
 
-  const skipped = selectedLeads.length - recipientEmails.length;
+  // Pre-flight summary — show before the send buttons so reps know exactly
+  // what they're about to do. The breakdown explains every dropped lead so
+  // surprises ("why did Gmail only get 8 of 12?") disappear.
+  const totalSelected = selectedLeads.length;
+  const noneSendable = preflight.valid.length === 0;
 
   return (
-    <div className="space-y-2 border-t border-slate-200 bg-slate-50 p-3 dark:border-slate-800 dark:bg-slate-950">
-      {recipientEmails.length === 0 ? (
+    <div className="space-y-3 border-t border-slate-200 bg-slate-50 p-3 dark:border-slate-800 dark:bg-slate-950">
+      <div>
+        <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+          Pre-flight check
+        </p>
+        <p className="mt-1 text-sm text-slate-900 dark:text-slate-100">
+          {noneSendable ? (
+            <>
+              <span className="font-semibold">0 of {totalSelected}</span> ready to send.
+            </>
+          ) : (
+            <>
+              <span className="font-semibold tabular-nums">{preflight.valid.length}</span>
+              {' '}of <span className="tabular-nums">{totalSelected}</span> ready to send.
+            </>
+          )}
+        </p>
+        {preflight.invalidFormat.length > 0 || preflight.missingEmail.length > 0 ? (
+          <ul className="mt-2 space-y-1 text-xs text-slate-600 dark:text-slate-400">
+            {preflight.missingEmail.length > 0 ? (
+              <li className="flex items-start gap-2">
+                <span aria-hidden="true" className="mt-0.5 inline-block h-1.5 w-1.5 flex-none rounded-full bg-slate-400" />
+                <span>
+                  <span className="font-medium text-slate-700 dark:text-slate-300 tabular-nums">
+                    {preflight.missingEmail.length}
+                  </span>{' '}
+                  skipped — no email on file
+                </span>
+              </li>
+            ) : null}
+            {preflight.invalidFormat.length > 0 ? (
+              <li className="flex items-start gap-2">
+                <span aria-hidden="true" className="mt-0.5 inline-block h-1.5 w-1.5 flex-none rounded-full bg-amber-500" />
+                <span>
+                  <span className="font-medium text-slate-700 dark:text-slate-300 tabular-nums">
+                    {preflight.invalidFormat.length}
+                  </span>{' '}
+                  skipped — invalid email format
+                  {preflight.invalidFormat.length <= 3 ? (
+                    <span className="ml-1 text-slate-500 dark:text-slate-500">
+                      ({preflight.invalidFormat
+                        .map((l) => l.customer.business_name)
+                        .join(', ')})
+                    </span>
+                  ) : null}
+                </span>
+              </li>
+            ) : null}
+          </ul>
+        ) : null}
+      </div>
+
+      {noneSendable ? (
         <p className="text-xs text-amber-900 dark:text-amber-300">
-          None of the selected leads have an email address on file. Add emails to your data and reselect.
+          None of the selected leads have a deliverable email address. Add or fix emails in your data and reselect.
         </p>
       ) : (
         <>
-          <p className="text-xs text-slate-600 dark:text-slate-400">
-            {recipientEmails.length} recipient{recipientEmails.length === 1 ? '' : 's'} ready.
-            {skipped > 0 ? ` (${skipped} skipped — no email on file.)` : null}
-          </p>
           <div className="flex flex-wrap gap-2">
             <button
               type="button"
