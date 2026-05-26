@@ -45,11 +45,16 @@ export function SignIn() {
   };
 
   return (
-    <div className="mx-auto flex w-full max-w-md flex-col gap-8 px-4 py-12 sm:py-20">
+    // Outer wrapper widens to max-w-5xl so the ThemeToggle lands at the
+    // same x-position as on the EmptyState (which also uses max-w-5xl)
+    // — keeps the top-right control consistent across the unauthenticated
+    // pages. The form itself stays narrow via an inner max-w-md container.
+    <div className="mx-auto flex w-full max-w-5xl flex-col gap-8 px-4 py-12 sm:py-16">
       <div className="flex justify-end">
         <ThemeToggle />
       </div>
 
+      <div className="mx-auto flex w-full max-w-md flex-col gap-8">
       <header className="flex flex-col items-center gap-4 text-center">
         <BullseyeLogo size={64} animated />
         <div>
@@ -126,6 +131,7 @@ export function SignIn() {
       <p className="text-center text-xs text-slate-500 dark:text-slate-500">
         Internal tool. Your team lead has the password.
       </p>
+      </div>
     </div>
   );
 }
