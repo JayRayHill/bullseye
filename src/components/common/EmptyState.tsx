@@ -17,7 +17,7 @@ export function EmptyState() {
         <ThemeToggle />
       </div>
       <header className="flex flex-col items-center gap-4 text-center">
-        <BullseyeLogo size={64} />
+        <BullseyeLogo size={64} animated />
         <div>
           <h1 className="text-4xl font-semibold tracking-tight text-slate-900 dark:text-slate-100 sm:text-5xl">
             Bullseye Offense

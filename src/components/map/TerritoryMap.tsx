@@ -30,7 +30,7 @@
 //     They're a small (<50) dynamic set tied to the active selection — the
 //     overhead of plain DOM markers is negligible and keeps the code simple.
 
-import { useEffect, useMemo, useRef } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import maplibregl, {
   type Map as MapLibreMap,
   type MapMouseEvent,
@@ -63,6 +63,24 @@ const CUSTOMER_LAYER = 'customer-pins';
 const RADIUS_SOURCE = 'radius-preview';
 const RADIUS_FILL_LAYER = 'radius-preview-fill';
 const RADIUS_LINE_LAYER = 'radius-preview-line';
+
+// 3D tilt: stored angle (degrees) and persistence key. 52° is a meaningful
+// perspective without going so far that the map runs out of tiles near the
+// horizon. localStorage so the rep's preference survives reloads — same
+// pattern the theme toggle uses.
+const PITCH_STORAGE_KEY = 'bullseye:map-pitch';
+const PITCH_TILTED_DEG = 52;
+const PITCH_FLAT_DEG = 0;
+const PITCH_EASE_MS = 700;
+
+function loadInitialPitch(): boolean {
+  if (typeof window === 'undefined') return false;
+  try {
+    return window.localStorage.getItem(PITCH_STORAGE_KEY) === 'tilted';
+  } catch {
+    return false;
+  }
+}
 
 // Visibility opacities (high = visible, low = invisible). Light mode keeps
 // the circle very gentle; dark mode bumps both stroke and fill slightly so
@@ -98,6 +116,9 @@ export function TerritoryMap({ customers, allCustomers }: TerritoryMapProps) {
   const styleLoadedRef = useRef(false);
   const leadMarkersRef = useRef<Marker[]>([]);
   const popupRef = useRef<Popup | null>(null);
+  // 3D tilt — persisted preference. We use lazy state init so the value is
+  // read from localStorage exactly once on mount.
+  const [isTilted, setIsTilted] = useState<boolean>(loadInitialPitch);
   // Track the currently hovered/active feature-state ids so we can clear them
   // before applying a new one (otherwise stale state lingers across hovers).
   const stateRef = useRef<{ hovered: string | null; active: string | null }>({
@@ -131,6 +152,9 @@ export function TerritoryMap({ customers, allCustomers }: TerritoryMapProps) {
       style: isDark ? STYLE_DARK : STYLE_LIGHT,
       center: DEFAULT_CENTER,
       zoom: DEFAULT_ZOOM,
+      // Apply the persisted pitch immediately so a tilted-mode rep doesn't
+      // see a "flat → tilt" pop on every reload.
+      pitch: isTilted ? PITCH_TILTED_DEG : PITCH_FLAT_DEG,
       attributionControl: { compact: true },
     });
     mapRef.current = map;
@@ -259,6 +283,10 @@ export function TerritoryMap({ customers, allCustomers }: TerritoryMapProps) {
           // Smooth zoom-driven size changes (cluster recompute can jump
           // sizes; the transition keeps motion intentional).
           'circle-radius-transition': { duration: 150, delay: 0 },
+          // Used by the "drop in" effect on fresh data load — initial set to
+          // [0, -36] then animated to [0, 0] over 600ms. Transition value
+          // belongs on the layer; the trigger lives in the data-load effect.
+          'circle-translate-transition': { duration: 600, delay: 0 },
         },
       });
     }
@@ -311,6 +339,11 @@ export function TerritoryMap({ customers, allCustomers }: TerritoryMapProps) {
             'center',
           ],
           'icon-allow-overlap': true,
+        },
+        paint: {
+          // Drop-in transition for fresh data loads — see the data-load
+          // effect below for the [0, -36] → [0, 0] sequence. 600ms ease.
+          'icon-translate-transition': { duration: 600, delay: 0 },
         },
       });
     }
@@ -443,6 +476,34 @@ export function TerritoryMap({ customers, allCustomers }: TerritoryMapProps) {
     syncCustomerData(map);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [clusteredFeatures]);
+
+  // ---- 3a. Pin drop on FRESH data hydration. Detect the empty-to-populated
+  // transition (page reload, file upload, replace-file) and offset the
+  // pins above their final positions for one frame, then animate them
+  // down via the icon-translate / circle-translate transitions configured
+  // on the layers. Filter changes don't re-trigger this — the ref stays
+  // `true` as long as there's any data, so reps don't get a pin-drop
+  // every time they toggle a state chip. ----
+  const hasPinnedDataRef = useRef(false);
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !styleLoadedRef.current) return;
+    const hasData = allCustomers.length > 0;
+    if (hasData && !hasPinnedDataRef.current) {
+      // Lift pins above their final position, then on the next frame
+      // animate them down. MapLibre interpolates via the
+      // *-translate-transition configured on each layer.
+      map.setPaintProperty(CUSTOMER_LAYER, 'icon-translate', [0, -36]);
+      map.setPaintProperty(CLUSTER_LAYER, 'circle-translate', [0, -36]);
+      requestAnimationFrame(() => {
+        const m = mapRef.current;
+        if (!m || !styleLoadedRef.current) return;
+        m.setPaintProperty(CUSTOMER_LAYER, 'icon-translate', [0, 0]);
+        m.setPaintProperty(CLUSTER_LAYER, 'circle-translate', [0, 0]);
+      });
+    }
+    hasPinnedDataRef.current = hasData;
+  }, [allCustomers]);
 
   // ---- 4. Mirror selection/hover to feature-state ----
   useEffect(() => {
@@ -618,29 +679,100 @@ export function TerritoryMap({ customers, allCustomers }: TerritoryMapProps) {
     };
   }, [leads, activeCustomerId, allCustomers, setActive, setHovered]);
 
+  // ---- 6b. Ease the camera pitch when the 3D toggle flips. easeTo with
+  // duration > 0 means MapLibre interpolates smoothly between angles, so
+  // the rep sees the world "lift up" instead of teleporting.
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return;
+    map.easeTo({
+      pitch: isTilted ? PITCH_TILTED_DEG : PITCH_FLAT_DEG,
+      duration: PITCH_EASE_MS,
+    });
+    try {
+      window.localStorage.setItem(
+        PITCH_STORAGE_KEY,
+        isTilted ? 'tilted' : 'flat'
+      );
+    } catch {
+      /* localStorage can throw in private-mode Safari; ignore */
+    }
+  }, [isTilted]);
+
+  function toggleTilt() {
+    setIsTilted((t) => !t);
+  }
+
   // ---- 7. Reset button: clear all selection AND return to default view ----
   function onReset() {
     const map = mapRef.current;
     // Clear both kinds of selection so the detail panel closes and the
     // "Build campaign" sticky bar disappears — "Reset" should feel like a
-    // clean slate.
+    // clean slate. Pitch goes back to whatever the rep's persisted
+    // preference is — don't override that on Reset.
     clearSelection();
     clearCampaignSelection();
     if (!map) return;
-    map.flyTo({ center: DEFAULT_CENTER, zoom: DEFAULT_ZOOM, duration: 600 });
+    map.flyTo({
+      center: DEFAULT_CENTER,
+      zoom: DEFAULT_ZOOM,
+      pitch: isTilted ? PITCH_TILTED_DEG : PITCH_FLAT_DEG,
+      duration: 600,
+    });
   }
 
   return (
     <div className="relative h-full min-h-[24rem] w-full overflow-hidden rounded-lg">
       <div ref={containerRef} className="h-full w-full" aria-label="Customer map" role="region" />
-      <button
-        type="button"
-        onClick={onReset}
-        title="Clear selection and return to the default view"
-        className="absolute right-3 top-3 z-10 rounded-md bg-white/95 px-3 py-1.5 text-xs font-medium text-slate-800 shadow ring-1 ring-slate-200 backdrop-blur transition-colors hover:bg-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-400 dark:bg-slate-900/95 dark:text-slate-100 dark:ring-slate-700 dark:hover:bg-slate-900"
-      >
-        Reset
-      </button>
+      <div className="absolute right-3 top-3 z-10 flex items-center gap-2">
+        <button
+          type="button"
+          onClick={toggleTilt}
+          title={isTilted ? 'Switch to flat (2D) view' : 'Switch to tilted (3D) view'}
+          aria-pressed={isTilted}
+          className={
+            'flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium shadow ring-1 backdrop-blur transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-400 ' +
+            (isTilted
+              ? 'bg-brand-700 text-white ring-brand-800 hover:bg-brand-800 dark:bg-brand-600 dark:ring-brand-700 dark:hover:bg-brand-500'
+              : 'bg-white/95 text-slate-800 ring-slate-200 hover:bg-white dark:bg-slate-900/95 dark:text-slate-100 dark:ring-slate-700 dark:hover:bg-slate-900')
+          }
+        >
+          {/* Subtle perspective glyph — flat parallelogram when in 2D
+              (representing the tilted ground plane the click will reveal),
+              square when in 3D (the flat-view target). */}
+          <svg viewBox="0 0 16 16" className="h-3.5 w-3.5" aria-hidden="true">
+            {isTilted ? (
+              <rect
+                x="2.5"
+                y="2.5"
+                width="11"
+                height="11"
+                rx="1.5"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.6"
+              />
+            ) : (
+              <path
+                d="M2 11 L6 4 L14 4 L10 11 Z"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.6"
+                strokeLinejoin="round"
+              />
+            )}
+          </svg>
+          {isTilted ? '2D' : '3D'}
+        </button>
+        <button
+          type="button"
+          onClick={onReset}
+          title="Clear selection and return to the default view"
+          className="rounded-md bg-white/95 px-3 py-1.5 text-xs font-medium text-slate-800 shadow ring-1 ring-slate-200 backdrop-blur transition-colors hover:bg-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-400 dark:bg-slate-900/95 dark:text-slate-100 dark:ring-slate-700 dark:hover:bg-slate-900"
+        >
+          Reset
+        </button>
+      </div>
     </div>
   );
 }

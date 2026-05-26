@@ -100,8 +100,43 @@
   animation: stm-lead-pin-in 160ms ease-out backwards;
 }
 
+/* Bullseye logo intro — concentric rings scale up from the center one by
+   one, with a subtle elastic overshoot. transform-box: fill-box anchors the
+   transform-origin to each circle individually so they all scale around
+   their own centers (not the SVG viewport's origin). */
+@keyframes stm-bullseye-ring-in {
+  from { transform: scale(0); }
+  to   { transform: scale(1); }
+}
+.stm-bullseye-ring {
+  transform-box: fill-box;
+  transform-origin: center;
+  /* cubic-bezier(0.34, 1.56, 0.64, 1) is the "easeOutBack" curve — gives
+     a hint of overshoot for an alive, springy feel without going cartoony. */
+  animation: stm-bullseye-ring-in 360ms cubic-bezier(0.34, 1.56, 0.64, 1) backwards;
+}
+
+/* Detail panel mount transition — a small slide-up + fade. Keyed on the
+   active customer id in DetailPanel.tsx so it re-fires on each new
+   selection, matching the per-selection cinematic on the map. */
+@keyframes stm-panel-enter {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.stm-panel-enter {
+  animation: stm-panel-enter 240ms cubic-bezier(0.16, 1, 0.3, 1) backwards;
+}
+
 @media (prefers-reduced-motion: reduce) {
-  .stm-lead-pin-enter {
+  .stm-lead-pin-enter,
+  .stm-bullseye-ring,
+  .stm-panel-enter {
     animation: none !important;
   }
 }

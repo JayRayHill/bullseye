@@ -65,10 +65,15 @@ export function DetailPanel() {
 
   return (
     <section
+      // `key` re-fires the CSS mount animation when the active customer
+      // changes, not just when the panel first appears. The cinematic
+      // intent is "each new selection feels like a new panel" — which
+      // matches the radius-circle / staggered-pin choreography on the map.
+      key={active.id}
       role="region"
       aria-live="polite"
       aria-label="Customer details"
-      className="space-y-4 rounded-xl border border-slate-200 border-l-4 border-l-brand-700 bg-white p-5 shadow-sm dark:border-slate-800 dark:border-l-brand-500 dark:bg-slate-900"
+      className="stm-panel-enter space-y-4 rounded-xl border border-slate-200 border-l-4 border-l-brand-700 bg-white p-5 shadow-sm dark:border-slate-800 dark:border-l-brand-500 dark:bg-slate-900"
     >
       <div className="flex items-start justify-between gap-3">
         <h2
