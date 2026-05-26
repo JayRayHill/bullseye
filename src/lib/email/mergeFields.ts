@@ -31,17 +31,25 @@ export interface MergeContext {
   mode?: MergeMode;
 }
 
+// Fallback when the lead has no usable contact name. Must be a complete
+// salutation word on its own — the current templates render
+// `{{lead_first_name}},` as the literal first line, so returning the bare
+// "there" left the orphan "there," (technically grammatical, but reads
+// like a copy-paste mistake). "Hi there" stands alone naturally whether
+// or not the template adds its own greeting prefix.
+const NAME_FALLBACK = 'Hi there';
+
 function firstName(fullName: string | undefined): string {
-  if (!fullName) return 'there';
+  if (!fullName) return NAME_FALLBACK;
   const trimmed = fullName.trim();
-  if (!trimmed) return 'there';
+  if (!trimmed) return NAME_FALLBACK;
   return trimmed.split(/\s+/)[0];
 }
 
 function buildMap(ctx: MergeContext): Record<string, string> {
   const mode = ctx.mode ?? 'perLead';
   const leadBusiness = mode === 'perLead' ? ctx.lead.business_name : 'your business';
-  const leadFirst = mode === 'perLead' ? firstName(ctx.lead.contact_name) : 'there';
+  const leadFirst = mode === 'perLead' ? firstName(ctx.lead.contact_name) : NAME_FALLBACK;
   const miles = Math.max(1, Math.round(ctx.distanceMiles));
   return {
     '{{lead_first_name}}': leadFirst,
