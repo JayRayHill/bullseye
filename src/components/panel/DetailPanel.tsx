@@ -14,6 +14,7 @@ import { ActiveCustomerCard } from './ActiveCustomerCard';
 import { AdditionalFields } from './AdditionalFields';
 import { CustomerNotes } from './CustomerNotes';
 import { NearbyLeadsList } from './NearbyLeadsList';
+import { TopTargets } from './TopTargets';
 
 export function DetailPanel() {
   const { dataset, columnMapping } = useData();
@@ -57,11 +58,18 @@ export function DetailPanel() {
   }, [active, clearSelection]);
 
   if (!active || !dataset) {
-    return (
-      <div className="rounded-xl border border-dashed border-slate-300 bg-white p-6 text-center text-sm text-slate-600 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-400">
-        Click a green or gray pin on the map to see deal details and nearby open leads.
-      </div>
-    );
+    // Empty state — surface "where should I start?" via the top-targets
+    // widget instead of leaving the rep staring at a static "Click a pin"
+    // placeholder. Falls through to the placeholder only when there's no
+    // dataset at all.
+    if (!dataset) {
+      return (
+        <div className="rounded-xl border border-dashed border-slate-300 bg-white p-6 text-center text-sm text-slate-600 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-400">
+          Upload a customer file to see your territory.
+        </div>
+      );
+    }
+    return <TopTargets />;
   }
 
   return (
