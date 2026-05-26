@@ -1,15 +1,64 @@
-// Landing screen shown when no dataset is loaded. Hero treatment: oversized
-// logo, tagline, dropzone, privacy as quiet inline bullets, and a 3-step
-// "How it works" strip beneath.
+// Landing screen shown when no dataset is loaded. Two side-by-side
+// entry points:
+//   1. "Use the default list" — one-click load of the bundled HubSpot
+//      seed dataset. SDRs skip the upload + mapping ritual entirely.
+//   2. "Upload your own file" — the existing dropzone + mapping flow.
+//
+// The hero (logo + wordmark + tagline) stays at the top; the two CTAs
+// are framed as siblings so neither feels secondary. The "How it
+// works" strip lives below for first-time orientation.
 
+import { useState } from 'react';
 import { BullseyeLogo } from '../brand/BullseyeLogo';
 import { ThemeToggle } from '../brand/ThemeToggle';
 import { PrivacyBanner } from '../layout/PrivacyBanner';
 import { UploadDropzone } from '../upload/UploadDropzone';
+import { useData } from '../../context/DataContext';
+import { useToast } from './ToastProvider';
+import { loadDefaultDataset } from '../../lib/parsing/loadDefaultDataset';
+import { showLoadingBar, hideLoadingBar } from '../../lib/loading';
 
 export function EmptyState() {
+  const { setDataset, setColumnMapping, setUploadErrors } = useData();
+  const toast = useToast();
+  const [loadingDefault, setLoadingDefault] = useState(false);
+
+  const onUseDefault = async () => {
+    if (loadingDefault) return;
+    setLoadingDefault(true);
+    showLoadingBar('Loading the default customer list…');
+    try {
+      const { dataset, errors } = await loadDefaultDataset();
+      if (dataset.customers.length === 0) {
+        toast.show(
+          'error',
+          'The default list parsed but every row was skipped. Try uploading your own file instead.'
+        );
+        return;
+      }
+      setDataset(dataset);
+      // No explicit user-chosen mapping for the default path; the
+      // detail-panel "Additional fields" view falls back to showing
+      // every column when columnMapping is null/empty, which is what
+      // we want for the seed dataset.
+      setColumnMapping({});
+      setUploadErrors(errors);
+      toast.show(
+        'info',
+        `Loaded ${dataset.customers.length.toLocaleString()} customers from the default list` +
+          (errors.length > 0 ? ` (${errors.length.toLocaleString()} skipped).` : '.')
+      );
+    } catch (e) {
+      const message = e instanceof Error ? e.message : 'Failed to load the default list.';
+      toast.show('error', message);
+    } finally {
+      setLoadingDefault(false);
+      hideLoadingBar();
+    }
+  };
+
   return (
-    <div className="mx-auto flex w-full max-w-4xl flex-col gap-8 px-4 py-12 sm:py-16">
+    <div className="mx-auto flex w-full max-w-5xl flex-col gap-8 px-4 py-12 sm:py-16">
       {/* Theme toggle floats top-right so first-time visitors can choose
           before loading any data. Once the Shell is mounted, the toggle
           lives in the main header instead. */}
@@ -27,13 +76,54 @@ export function EmptyState() {
           </p>
         </div>
         <p className="max-w-xl text-sm text-slate-600 dark:text-slate-400 sm:text-base">
-          Upload your customer list. We&rsquo;ll plot your wins on a US map and surface the
-          nearby prospects who never quite closed — then help you email them using your
+          Plot your closed customers on a US map and surface the nearby
+          prospects who never quite closed — then email them using your
           existing customer as social proof.
         </p>
       </header>
 
-      <UploadDropzone />
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+        {/* Default-list CTA — equal weight to the upload card so it's
+            the obvious one-click entry for SDRs. */}
+        <section className="flex flex-col justify-between gap-4 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+          <div>
+            <h2 className="text-sm font-semibold uppercase tracking-wide text-brand-700 dark:text-brand-300">
+              Use the default list
+            </h2>
+            <p className="mt-2 text-sm text-slate-700 dark:text-slate-300">
+              Start with our pre-loaded HubSpot customer list. No upload,
+              no column mapping — just click and get to work.
+            </p>
+            <p className="mt-2 text-xs text-slate-500 dark:text-slate-500">
+              Best for SDRs running outreach off the shared list.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={onUseDefault}
+            disabled={loadingDefault}
+            className="inline-flex items-center justify-center rounded-md bg-brand-700 px-4 py-2 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-brand-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-400 disabled:opacity-60 dark:bg-brand-600 dark:hover:bg-brand-500"
+          >
+            {loadingDefault ? 'Loading…' : 'Use the default list →'}
+          </button>
+        </section>
+
+        {/* Upload CTA — wraps the existing dropzone so the drag-drop
+            and file-picker UX is unchanged. Wrapped in a section so the
+            framing matches the default-list card. */}
+        <section className="flex flex-col gap-3 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+          <div>
+            <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-700 dark:text-slate-300">
+              Upload your own file
+            </h2>
+            <p className="mt-2 text-sm text-slate-700 dark:text-slate-300">
+              Working with a different segment? Drop a CSV or XLSX and
+              we&rsquo;ll auto-detect the columns.
+            </p>
+          </div>
+          <UploadDropzone />
+        </section>
+      </div>
 
       <PrivacyBanner variant="inline" />
 
@@ -47,8 +137,8 @@ export function EmptyState() {
         <ol className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-3">
           <Step
             number={1}
-            title="Upload your CRM export"
-            body="Drop a CSV or Excel file. Required columns: business name and zip. Status and close date are optional."
+            title="Load a customer list"
+            body="Start with the default list or upload your own CSV / XLSX."
           />
           <Step
             number={2}
@@ -62,7 +152,6 @@ export function EmptyState() {
           />
         </ol>
       </section>
-
     </div>
   );
 }
