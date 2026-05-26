@@ -66,6 +66,12 @@ export interface DatasetTotals {
   lost: number;
   notClosed: number;
   invalid: number;
+  /** Breakdown of `invalid` by skip reason — surfaced in the upload summary
+   *  so the rep can see at a glance WHY rows were dropped, not just how many.
+   *  These three sum to `invalid` (each skipped row is counted once). */
+  missingBusinessName: number;
+  invalidZip: number;
+  unknownZip: number;
 }
 
 export interface Dataset {

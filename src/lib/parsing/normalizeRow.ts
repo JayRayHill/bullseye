@@ -79,10 +79,17 @@ export function normalizeRows(
   let closed = 0;
   let lost = 0;
   let notClosed = 0;
+  // Categorical skip counters so the upload summary can show WHY rows got
+  // dropped, not just how many. Survives reloads because they live on
+  // dataset.totals (which is persisted to IndexedDB).
+  let missingBusinessName = 0;
+  let invalidZip = 0;
+  let unknownZip = 0;
 
   rows.forEach((row, rowIndex) => {
     const businessName = readField(row, mapping, 'business_name').trim();
     if (!businessName) {
+      missingBusinessName += 1;
       errors.push({
         rowIndex,
         reason: 'missing_business_name',
@@ -94,6 +101,7 @@ export function normalizeRows(
     const rawZip = readField(row, mapping, 'zip');
     const zip = cleanZip(rawZip);
     if (!zip) {
+      invalidZip += 1;
       errors.push({
         rowIndex,
         reason: 'invalid_zip',
@@ -103,6 +111,7 @@ export function normalizeRows(
     }
     const coord = zipCoords[zip];
     if (!coord) {
+      unknownZip += 1;
       errors.push({
         rowIndex,
         reason: 'unknown_zip',
@@ -163,7 +172,15 @@ export function normalizeRows(
   return {
     dataset: {
       customers,
-      totals: { closed, lost, notClosed, invalid: errors.length },
+      totals: {
+        closed,
+        lost,
+        notClosed,
+        invalid: errors.length,
+        missingBusinessName,
+        invalidZip,
+        unknownZip,
+      },
       uploadedAt: new Date().toISOString(),
       sourceFilename,
       headers,

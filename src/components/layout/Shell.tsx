@@ -93,7 +93,12 @@ export function Shell() {
       <main className="mx-auto flex w-full max-w-7xl flex-1 flex-col gap-4 px-4 py-4">
         <FilterBar />
 
-        {uploadErrors.length > 0 ? (
+        {/* Show the upload summary whenever there's a known skip count in
+            the persisted dataset, not just when ephemeral per-row errors
+            are still in memory. This way the rep sees the breakdown even
+            after a page reload — the per-row list collapses but the
+            categorical counts remain. */}
+        {dataset.totals.invalid > 0 ? (
           <UploadSummary dataset={dataset} errors={uploadErrors} />
         ) : null}
 
