@@ -46,6 +46,7 @@ import { useFilters } from '../../context/FiltersContext';
 import { useTheme } from '../../context/ThemeContext';
 import { useSentHistory } from '../../context/SentHistoryContext';
 import { geographicCirclePolygon } from '../../lib/geo/circleGeometry';
+import { countNearbyUncontactedLeads } from '../../lib/leads/topTargets';
 import { loadPinImages, PIN_SVGS } from './icons';
 
 const DEFAULT_CENTER: [number, number] = [-98.35, 39.5]; // MapLibre uses [lng, lat]
@@ -424,11 +425,33 @@ export function TerritoryMap({ customers, allCustomers }: TerritoryMapProps) {
     const cityState = [props.city, props.state].filter(Boolean).join(', ');
     const statusLabel =
       props.status === 'closed' ? 'Closed' : props.status === 'lost' ? 'Lost' : 'Open';
+    // For closed customers, add a line showing how many uncontacted
+    // nearby leads they unlock at the current radius. Lets reps visually
+    // survey for high-impact anchors without clicking each pin. Skipped
+    // for lost and open pins since those aren't anchors to begin with.
+    let nearbyLine = '';
+    if (props.status === 'closed') {
+      const id = props.id as string | undefined;
+      const anchor = id ? allCustomers.find((c) => c.id === id) : undefined;
+      if (anchor) {
+        const count = countNearbyUncontactedLeads(
+          anchor,
+          allCustomers,
+          filters.radiusMiles,
+          isLeadBlocked
+        );
+        nearbyLine =
+          count === 0
+            ? `<div style="color: #94a3b8;">No uncontacted leads within ${filters.radiusMiles} mi</div>`
+            : `<div style="color: #0c5f3f; font-weight: 600;">${count} uncontacted nearby</div>`;
+      }
+    }
     const html = `
       <div style="font-size: 12px; line-height: 1.4;">
         <div style="font-weight: 600;">${escapeHtml(String(props.business_name ?? ''))}</div>
         ${cityState ? `<div style="color: #475569;">${escapeHtml(cityState)}</div>` : ''}
         <div style="color: #64748b;">${statusLabel}</div>
+        ${nearbyLine}
       </div>`;
     popupRef.current = new maplibregl.Popup({
       closeButton: false,
