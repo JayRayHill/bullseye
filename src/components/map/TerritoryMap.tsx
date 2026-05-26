@@ -466,6 +466,36 @@ export function TerritoryMap({ customers, allCustomers }: TerritoryMapProps) {
     });
   }, [activeCustomerId, allCustomers]);
 
+  // ---- 5a. Sonar pulse on selection — a brand-green ring expands out
+  // from the clicked pin to ack the click and start the "scanning for
+  // neighbors" cinematic before the flyTo even lands. One-shot per click;
+  // the CSS animation runs ~950ms then the marker is removed.
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !activeCustomerId) return;
+    const c = allCustomers.find((cust) => cust.id === activeCustomerId);
+    if (!c) return;
+    // Inline-positioned by MapLibre. The visible ring is the child div
+    // (.stm-sonar-pulse) so the CSS animation can scale it without
+    // conflicting with MapLibre's translate() on the wrapper element.
+    const outer = document.createElement('div');
+    const inner = document.createElement('div');
+    inner.className = 'stm-sonar-pulse';
+    outer.appendChild(inner);
+    const marker = new maplibregl.Marker({
+      element: outer,
+      anchor: 'center',
+    })
+      .setLngLat([c.lng, c.lat])
+      .addTo(map);
+    // Remove just after the animation completes (950ms + small buffer).
+    const t = window.setTimeout(() => marker.remove(), 1050);
+    return () => {
+      window.clearTimeout(t);
+      marker.remove();
+    };
+  }, [activeCustomerId, allCustomers]);
+
   // ---- 5b. Radius preview circle — translucent overlay showing the
   // current search radius around the active customer. Visible the entire
   // time a customer is selected; cleared on deselect. The slider live-
@@ -509,6 +539,12 @@ export function TerritoryMap({ customers, allCustomers }: TerritoryMapProps) {
   }, [activeCustomerId, allCustomers, filters.radiusMiles, isDark]);
 
   // ---- 6. HTML markers for the small dynamic lead set ----
+  // Tracks the last active customer this effect saw, so we know whether the
+  // current render is a FRESH selection (apply staggered entrance) vs. a
+  // slider drag that just refreshed the lead set for the same customer
+  // (skip the stagger — reps want responsive slider feedback, not animation
+  // on every tick).
+  const lastStaggeredForRef = useRef<string | null>(null);
   useEffect(() => {
     const map = mapRef.current;
     if (!map) return;
@@ -534,7 +570,11 @@ export function TerritoryMap({ customers, allCustomers }: TerritoryMapProps) {
       }
     }
 
-    for (const lead of markersToShow) {
+    const isFreshSelection = lastStaggeredForRef.current !== activeCustomerId;
+    lastStaggeredForRef.current = activeCustomerId;
+
+    for (let i = 0; i < markersToShow.length; i++) {
+      const lead = markersToShow[i];
       // CRITICAL: maplibregl.Marker writes `transform: translate(x, y)` on the
       // element it's given to position the marker on the map. If we set a
       // transform on the SAME element, we clobber the positioning and the pin
@@ -546,6 +586,15 @@ export function TerritoryMap({ customers, allCustomers }: TerritoryMapProps) {
       inner.style.cursor = 'pointer';
       inner.style.transformOrigin = 'center';
       inner.style.transition = 'transform 120ms ease-out';
+      // Stagger fade-in for FRESH selections only — leads are already sorted
+      // by distance ascending (nearest first) so the visual sweep reads as
+      // "scanning outward from the active customer." Cap the delay at
+      // 1200ms so the last pin in a long list still lands quickly; ~40ms
+      // per pin gives a nice rolling cadence under 30 pins.
+      if (isFreshSelection) {
+        inner.classList.add('stm-lead-pin-enter');
+        inner.style.animationDelay = `${Math.min(i * 40, 1200)}ms`;
+      }
       outer.appendChild(inner);
       inner.addEventListener('mouseenter', () => {
         inner.style.transform = 'scale(1.18)';

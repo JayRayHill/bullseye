@@ -66,3 +66,76 @@
   outline: 2px solid #1a8e60;
   outline-offset: 2px;
 }
+
+/* ============================================================
+   Signature motion moments
+   ------------------------------------------------------------
+   These two animations are the "click a closed customer" beat:
+   1. A sonar pulse expands outward from the clicked bullseye to
+      ack the click before the camera even finishes flying.
+   2. Amber lead pins fade in one-by-one (nearest first, ~40ms
+      stagger) so the proximity story reads visually rather than
+      requiring the rep to inspect a list.
+   Keep the durations short (≤1s) — these are reactions, not
+   decorations. Respect prefers-reduced-motion entirely.
+   ============================================================ */
+
+@keyframes stm-sonar-pulse {
+  0% {
+    transform: scale(0.35);
+    opacity: 0.7;
+  }
+  80% {
+    opacity: 0.05;
+  }
+  100% {
+    transform: scale(4);
+    opacity: 0;
+  }
+}
+
+.stm-sonar-pulse {
+  /* The MapLibre marker positions this element via inline transform on its
+     wrapper, so the visible ring lives in this child and is what gets
+     scaled. 36px starting size puts the ring just outside the bullseye pin. */
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: 2px solid #0c5f3f;
+  background: rgba(12, 95, 63, 0.18);
+  pointer-events: none;
+  /* Use forwards so it holds the final (invisible) frame until the parent
+     marker is removed by the React effect cleanup. */
+  animation: stm-sonar-pulse 950ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+.dark .stm-sonar-pulse {
+  border-color: #74d2a4;
+  background: rgba(116, 210, 164, 0.18);
+}
+
+@keyframes stm-lead-pin-in {
+  from {
+    opacity: 0;
+    transform: scale(0.55);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.stm-lead-pin-enter {
+  /* `backwards` keeps the pin in the starting (invisible) state during the
+     staggered delay, otherwise pins flash at full opacity before their
+     turn. transform-origin: bottom puts the scale-up pivot at the pin's
+     anchor point (the teardrop tip) so the pin grows from the lat/lng. */
+  transform-origin: bottom center;
+  animation: stm-lead-pin-in 240ms ease-out backwards;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .stm-sonar-pulse,
+  .stm-lead-pin-enter {
+    animation: none !important;
+  }
+}
