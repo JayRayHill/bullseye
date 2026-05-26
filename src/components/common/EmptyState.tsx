@@ -75,11 +75,6 @@ export function EmptyState() {
             Every closed deal has a neighbor.
           </p>
         </div>
-        <p className="max-w-xl text-sm text-slate-600 dark:text-slate-400 sm:text-base">
-          Plot your closed customers on a US map and surface the nearby
-          prospects who never quite closed — then email them using your
-          existing customer as social proof.
-        </p>
       </header>
 
       {/* Two CTAs side-by-side. The default-list card carries a
@@ -91,24 +86,24 @@ export function EmptyState() {
           reads as intentional. */}
       <div className="grid grid-cols-1 items-stretch gap-4 md:grid-cols-2">
         {/* Primary CTA — brand fill, inverted button for max contrast. */}
-        <section className="flex flex-col justify-between gap-5 rounded-2xl bg-brand-700 p-6 text-white shadow-md dark:bg-brand-600">
-          <div className="flex flex-col gap-2">
-            <p className="text-xs font-semibold uppercase tracking-wider text-brand-100 dark:text-brand-100">
+        <section className="flex flex-col justify-between gap-3 rounded-2xl bg-brand-700 p-5 text-white shadow-md dark:bg-brand-600">
+          <div className="flex flex-col gap-1.5">
+            <p className="text-[11px] font-semibold uppercase tracking-wider text-brand-100">
               For SDRs · Recommended
             </p>
-            <h2 className="text-2xl font-semibold tracking-tight">
+            <h2 className="text-lg font-semibold tracking-tight">
               Use the default list
             </h2>
-            <p className="text-sm leading-relaxed text-brand-50/95">
-              Start with our pre-loaded HubSpot customer list. No upload,
-              no column mapping — click and get to work.
+            <p className="text-sm leading-snug text-brand-50/95">
+              Pre-loaded HubSpot list. No upload, no column mapping —
+              click and get to work.
             </p>
           </div>
           <button
             type="button"
             onClick={onUseDefault}
             disabled={loadingDefault}
-            className="inline-flex items-center justify-center rounded-md bg-white px-4 py-2.5 text-sm font-semibold text-brand-800 shadow-sm transition-colors hover:bg-brand-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white disabled:opacity-70"
+            className="inline-flex items-center justify-center rounded-md bg-white px-4 py-2 text-sm font-semibold text-brand-800 shadow-sm transition-colors hover:bg-brand-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white disabled:opacity-70"
           >
             {loadingDefault ? 'Loading…' : 'Use the default list →'}
           </button>
@@ -116,17 +111,16 @@ export function EmptyState() {
 
         {/* Secondary CTA — neutral framing for the "I have my own data"
             path. Visually quieter than the brand-green card next to it. */}
-        <section className="flex flex-col justify-between gap-5 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900">
-          <div className="flex flex-col gap-2">
-            <p className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+        <section className="flex flex-col justify-between gap-3 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+          <div className="flex flex-col gap-1.5">
+            <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
               Have your own data
             </p>
-            <h2 className="text-2xl font-semibold tracking-tight text-slate-900 dark:text-slate-100">
+            <h2 className="text-lg font-semibold tracking-tight text-slate-900 dark:text-slate-100">
               Upload a file
             </h2>
-            <p className="text-sm leading-relaxed text-slate-600 dark:text-slate-400">
-              Working with a different segment? Drop a CSV or XLSX and
-              we&rsquo;ll auto-detect the columns.
+            <p className="text-sm leading-snug text-slate-600 dark:text-slate-400">
+              Drop a CSV or XLSX and we&rsquo;ll auto-detect the columns.
             </p>
           </div>
           <UploadDropzone />
