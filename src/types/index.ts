@@ -146,21 +146,38 @@ export interface CampaignState {
   customizedBody: string | null;
 }
 
-/** Phase 2.5: persisted per-browser record that a given lead has been emailed.
- *  Used to hard-block re-emailing within the cooldown window. Identity is
- *  computed by leadIdentity(customer) — see src/lib/email/leadIdentity.ts. */
+/** Methods by which a rep can record having contacted a lead. The first two
+ *  are auto-recorded when the campaign drawer fires; the rest are recorded
+ *  via the "Mark contacted" UI on a lead row (for phone/text/in-person
+ *  follow-ups that happen outside the email flow). */
+export type SendMethod = 'gmail' | 'mailto' | 'phone' | 'text' | 'in_person' | 'other';
+
+/** Persisted record that a given lead has been contacted. Used to hard-block
+ *  re-contacting within the cooldown window. Identity is computed by
+ *  leadIdentity(customer) — see src/lib/email/leadIdentity.ts.
+ *
+ *  Stored locally per-browser when Supabase isn't configured, or shared
+ *  across the team via Supabase when configured. Same shape either way. */
 export interface SentHistoryEntry {
   identity: string;
-  /** ISO timestamp of when the send was initiated. */
+  /** ISO timestamp of when the contact happened. */
   emailedAt: string;
-  /** Closed customer this lead was emailed about — for display in Settings. */
-  anchorCustomerName: string;
-  /** Lead's business name at the time of send — for display in Settings. */
+  /** Closed customer this lead was contacted about — for display in
+   *  Settings. Optional for manual contacts (phone/text/in-person) where
+   *  there's no anchor-driven campaign. */
+  anchorCustomerName?: string;
+  /** Lead's business name at the time of contact — for display in Settings. */
   leadBusinessName: string;
-  /** Template id used at the time of send. */
-  templateId: string;
-  sendMethod: 'gmail' | 'mailto';
+  /** Template id used at the time of contact. Empty for manual contacts. */
+  templateId?: string;
+  sendMethod: SendMethod;
+  /** Name of the rep who recorded this contact, sourced from RepSettings.
+   *  Required in team mode so the Settings → sent history view can show
+   *  who did what. */
+  recordedBy?: string;
 }
 
-/** Sent-history map, keyed by stable lead identity. Persisted in IndexedDB. */
+/** Sent-history map, keyed by stable lead identity. Holds only the MOST
+ *  RECENT entry per lead — older entries are dropped on insert/replace,
+ *  since cooldown checks only care about the latest contact. */
 export type SentHistory = Record<string, SentHistoryEntry>;

@@ -11,6 +11,7 @@
     "build:zip-coords": "node scripts/build-zip-coords.mjs"
   },
   "dependencies": {
+    "@supabase/supabase-js": "^2.106.2",
     "@tanstack/react-virtual": "^3.13.24",
     "clsx": "^2.1.1",
     "idb-keyval": "^6.2.2",

@@ -164,7 +164,16 @@ export function SettingsDialog({
                 <ul className="mt-3 max-h-48 overflow-y-auto divide-y divide-slate-100 rounded-md border border-slate-200 bg-white text-xs dark:divide-slate-800 dark:border-slate-700 dark:bg-slate-950">
                   {historyEntries.map((entry) => {
                     const days = daysSince(entry.emailedAt);
-                    const tmplName = findTemplate(entry.templateId).name;
+                    // Manual contacts (phone/text/in-person/other) don't
+                    // carry a template id — fall back to a human label
+                    // derived from the send method so the row still has
+                    // meaningful provenance text.
+                    const tmplName = entry.templateId
+                      ? findTemplate(entry.templateId).name
+                      : entry.sendMethod === 'phone' ? 'Phone call'
+                      : entry.sendMethod === 'text' ? 'Text message'
+                      : entry.sendMethod === 'in_person' ? 'In-person'
+                      : 'Manual touch';
                     const cooldownActive = days < SENT_COOLDOWN_DAYS;
                     return (
                       <li

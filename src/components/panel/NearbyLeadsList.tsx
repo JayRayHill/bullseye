@@ -12,6 +12,7 @@ import { useSelection } from '../../context/SelectionContext';
 import { useCampaign } from '../../context/CampaignContext';
 import { useSentHistory } from '../../context/SentHistoryContext';
 import { useNotes } from '../../context/NotesContext';
+import { MarkContactedButton } from './MarkContactedButton';
 import { daysSince, cooldownExpiry } from '../../lib/email/sentHistory';
 import { findTemplate } from '../../lib/email/templates';
 
@@ -115,7 +116,20 @@ function LeadRow({ lead }: { lead: NearbyLead }) {
   const sentEntry = lookup(lead.customer);
   const blocked = sentEntry ? daysSince(sentEntry.emailedAt) < 30 : false;
   const cooldownReason = blocked && sentEntry
-    ? `Emailed ${daysSince(sentEntry.emailedAt)}d ago via ${findTemplate(sentEntry.templateId).name}. Cooldown ends ${cooldownExpiry(sentEntry).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}.`
+    ? (() => {
+        const days = daysSince(sentEntry.emailedAt);
+        const expiry = cooldownExpiry(sentEntry).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+        // Manual contacts (phone/text/in-person) don't have a template;
+        // describe by method instead so the tooltip stays meaningful.
+        const via = sentEntry.templateId
+          ? `via ${findTemplate(sentEntry.templateId).name}`
+          : sentEntry.sendMethod === 'phone' ? 'by phone'
+          : sentEntry.sendMethod === 'text' ? 'by text'
+          : sentEntry.sendMethod === 'in_person' ? 'in person'
+          : '';
+        const verb = sentEntry.templateId ? 'Emailed' : 'Contacted';
+        return `${verb} ${days}d ago${via ? ` ${via}` : ''}. Cooldown ends ${expiry}.`;
+      })()
     : null;
   const disabled = !hasEmail || blocked;
   const checkboxTooltip = !hasEmail
@@ -190,6 +204,12 @@ function LeadRow({ lead }: { lead: NearbyLead }) {
           {lead.distanceMiles.toFixed(1)} mi
         </span>
       </button>
+      {/* "Mark contacted" lives outside the activate-button so clicks on
+          the icon don't bubble up to the row's setActive handler. Hidden
+          when the lead is already in cooldown — the badge already
+          communicates that state, no need to also offer a redundant
+          mark-contacted action. */}
+      <MarkContactedButton customer={lead.customer} disabled={blocked} />
     </li>
   );
 }

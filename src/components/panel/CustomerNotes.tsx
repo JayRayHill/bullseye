@@ -6,6 +6,7 @@
 import { useEffect, useRef, useState } from 'react';
 import type { Customer } from '../../types';
 import { useNotes } from '../../context/NotesContext';
+import { useSettings } from '../../context/SettingsContext';
 
 interface CustomerNotesProps {
   customer: Customer;
@@ -13,6 +14,7 @@ interface CustomerNotesProps {
 
 export function CustomerNotes({ customer }: CustomerNotesProps) {
   const { getNote, setNote } = useNotes();
+  const { settings } = useSettings();
   // Local input state so the textarea remains a controlled component the
   // user can type into without waiting for the persistence round-trip.
   const persisted = getNote(customer);
@@ -35,7 +37,7 @@ export function CustomerNotes({ customer }: CustomerNotesProps) {
     if (draft === persisted) return;
     if (saveTimer.current !== null) window.clearTimeout(saveTimer.current);
     saveTimer.current = window.setTimeout(() => {
-      setNote(customer, draft);
+      void setNote(customer, draft, settings.firstName);
       saveTimer.current = null;
     }, 600);
     return () => {
@@ -52,7 +54,7 @@ export function CustomerNotes({ customer }: CustomerNotesProps) {
       window.clearTimeout(saveTimer.current);
       saveTimer.current = null;
     }
-    if (draft !== persisted) setNote(customer, draft);
+    if (draft !== persisted) void setNote(customer, draft, settings.firstName);
   };
 
   return (

@@ -94,7 +94,13 @@ export function SendActions({ selectedLeads, anchor, settings }: SendActionsProp
     // Record only the leads we actually opened in Gmail (valid emails). Reps
     // can clear false records in Settings if they abandoned a compose tab.
     const sentCustomers = preflight.valid.map((l) => l.customer);
-    recordSent({ leads: sentCustomers, anchor, template, method: 'gmail' });
+    recordSent({
+      leads: sentCustomers,
+      anchor,
+      template,
+      method: 'gmail',
+      recordedBy: settings.firstName,
+    });
     if (batches.length > 1) {
       toast.show(
         'info',
@@ -124,6 +130,7 @@ export function SendActions({ selectedLeads, anchor, settings }: SendActionsProp
       anchor,
       template,
       method: 'mailto',
+      recordedBy: settings.firstName,
     });
   };
 
