@@ -77,10 +77,5 @@ export function BullseyeLogo({
       />
     </svg>
   );
-  // When animating, wrap in a halo container so the ::after radial gradient
-  // can pulse outward AFTER the rings finish settling — the "ta-da" landing.
-  if (shouldAnimate) {
-    return <span className="stm-bullseye-halo">{svg}</span>;
-  }
   return svg;
 }
