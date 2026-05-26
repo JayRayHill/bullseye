@@ -29,6 +29,7 @@ import { CampaignDrawer } from '../campaign/CampaignDrawer';
 import { BullseyeLogo } from '../brand/BullseyeLogo';
 import { StatsStrip } from '../brand/StatsStrip';
 import { ThemeToggle } from '../brand/ThemeToggle';
+import { CustomerSearch } from './CustomerSearch';
 
 export function Shell() {
   const { dataset, uploadErrors, clearDataset } = useData();
@@ -62,7 +63,7 @@ export function Shell() {
   return (
     <div className="flex min-h-screen flex-col bg-slate-50 dark:bg-slate-950">
       <header className="sticky top-0 z-30 border-b border-slate-200 bg-white/95 backdrop-blur dark:border-slate-800 dark:bg-slate-900/95">
-        <div className="mx-auto flex w-full max-w-7xl flex-wrap items-center justify-between gap-3 px-4 py-3">
+        <div className="mx-auto flex w-full max-w-7xl flex-wrap items-center gap-3 px-4 py-3">
           <div className="flex items-center gap-3">
             <BullseyeLogo size={32} animated />
             <div>
@@ -74,6 +75,10 @@ export function Shell() {
               </p>
             </div>
           </div>
+          {/* Centerpiece: fuzzy search across the loaded dataset. Grows to
+              fill space between brand and controls; wraps to its own line on
+              narrow viewports thanks to flex-wrap on the parent. */}
+          <CustomerSearch />
           <div className="flex flex-wrap items-center gap-3">
             <RadiusSlider />
             <ThemeToggle />
