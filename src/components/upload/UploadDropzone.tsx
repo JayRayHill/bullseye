@@ -78,7 +78,11 @@ export function UploadDropzone() {
         if (file) void processFile(file);
       }}
       className={clsx(
-        'flex flex-col items-center justify-center gap-3 rounded-xl border-2 border-dashed p-10 transition-colors',
+        // Padding is p-6 (tightened from p-10) so the dropzone fits
+        // comfortably inside the empty-state card without dominating
+        // the layout against the brand-green "Use default" card it
+        // sits next to.
+        'flex flex-col items-center justify-center gap-3 rounded-xl border-2 border-dashed p-6 transition-colors',
         dragOver
           ? 'border-brand-500 bg-brand-50 dark:border-brand-400 dark:bg-brand-900/30'
           : 'border-slate-300 bg-white hover:border-brand-400 dark:border-slate-700 dark:bg-slate-900 dark:hover:border-brand-600'

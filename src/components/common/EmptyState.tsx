@@ -82,41 +82,49 @@ export function EmptyState() {
         </p>
       </header>
 
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-        {/* Default-list CTA — equal weight to the upload card so it's
-            the obvious one-click entry for SDRs. */}
-        <section className="flex flex-col justify-between gap-4 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900">
-          <div>
-            <h2 className="text-sm font-semibold uppercase tracking-wide text-brand-700 dark:text-brand-300">
+      {/* Two CTAs side-by-side. The default-list card carries a
+          brand-green fill so it visually dominates — it's the primary
+          path for SDRs running off the shared list. The upload card
+          stays neutral, framed as the alternative for reps who want
+          to bring their own data. items-stretch + flex-1 inside each
+          section keeps the two cards the same height so the rebalance
+          reads as intentional. */}
+      <div className="grid grid-cols-1 items-stretch gap-4 md:grid-cols-2">
+        {/* Primary CTA — brand fill, inverted button for max contrast. */}
+        <section className="flex flex-col justify-between gap-5 rounded-2xl bg-brand-700 p-6 text-white shadow-md dark:bg-brand-600">
+          <div className="flex flex-col gap-2">
+            <p className="text-xs font-semibold uppercase tracking-wider text-brand-100 dark:text-brand-100">
+              For SDRs · Recommended
+            </p>
+            <h2 className="text-2xl font-semibold tracking-tight">
               Use the default list
             </h2>
-            <p className="mt-2 text-sm text-slate-700 dark:text-slate-300">
+            <p className="text-sm leading-relaxed text-brand-50/95">
               Start with our pre-loaded HubSpot customer list. No upload,
-              no column mapping — just click and get to work.
-            </p>
-            <p className="mt-2 text-xs text-slate-500 dark:text-slate-500">
-              Best for SDRs running outreach off the shared list.
+              no column mapping — click and get to work.
             </p>
           </div>
           <button
             type="button"
             onClick={onUseDefault}
             disabled={loadingDefault}
-            className="inline-flex items-center justify-center rounded-md bg-brand-700 px-4 py-2 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-brand-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-400 disabled:opacity-60 dark:bg-brand-600 dark:hover:bg-brand-500"
+            className="inline-flex items-center justify-center rounded-md bg-white px-4 py-2.5 text-sm font-semibold text-brand-800 shadow-sm transition-colors hover:bg-brand-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white disabled:opacity-70"
           >
             {loadingDefault ? 'Loading…' : 'Use the default list →'}
           </button>
         </section>
 
-        {/* Upload CTA — wraps the existing dropzone so the drag-drop
-            and file-picker UX is unchanged. Wrapped in a section so the
-            framing matches the default-list card. */}
-        <section className="flex flex-col gap-3 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900">
-          <div>
-            <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-700 dark:text-slate-300">
-              Upload your own file
+        {/* Secondary CTA — neutral framing for the "I have my own data"
+            path. Visually quieter than the brand-green card next to it. */}
+        <section className="flex flex-col justify-between gap-5 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+          <div className="flex flex-col gap-2">
+            <p className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+              Have your own data
+            </p>
+            <h2 className="text-2xl font-semibold tracking-tight text-slate-900 dark:text-slate-100">
+              Upload a file
             </h2>
-            <p className="mt-2 text-sm text-slate-700 dark:text-slate-300">
+            <p className="text-sm leading-relaxed text-slate-600 dark:text-slate-400">
               Working with a different segment? Drop a CSV or XLSX and
               we&rsquo;ll auto-detect the columns.
             </p>
