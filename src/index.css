@@ -156,43 +156,34 @@
   background: radial-gradient(circle, rgba(116, 210, 164, 0.5) 0%, rgba(116, 210, 164, 0) 65%);
 }
 
-/* Detail panel mount transition — slide-in from the right (on desktop) or
-   from below (on mobile) plus a small scale settle so it feels like it
-   physically arrives rather than blinking in. Keyed on the active
-   customer id in DetailPanel.tsx so it re-fires on each new selection,
-   matching the per-selection cinematic on the map. Tuned BIG (32px slide,
-   400ms duration) so it actually registers — earlier 10px/240ms was
-   imperceptible. */
+/* Detail panel mount transition.
+   IMPORTANT: the panel sits inside a parent with `lg:overflow-y-auto`,
+   which causes the browser to compute `overflow-x` as `auto` too — so
+   any translateX would get clipped off-screen, making the slide feel
+   like a flash. We avoid translate-on-X entirely here and use opacity +
+   scale + a tiny translateY (which the parent CAN scroll, so it's not
+   clipped). transform-origin: top right makes the scale grow from the
+   corner closest to the map, reading as "the panel just arrived from
+   where the customer was on the map" without literal motion outside
+   the box. 550ms is long enough to feel intentional but short enough
+   that it's never in the way of the next click. */
 @keyframes stm-panel-enter {
-  from {
+  0% {
     opacity: 0;
-    transform: translateX(32px) scale(0.97);
+    transform: scale(0.88) translateY(12px);
   }
-  to {
+  60% {
     opacity: 1;
-    transform: none;
   }
-}
-@keyframes stm-panel-enter-mobile {
-  from {
-    opacity: 0;
-    transform: translateY(28px) scale(0.97);
-  }
-  to {
+  100% {
     opacity: 1;
-    transform: none;
+    transform: scale(1) translateY(0);
   }
 }
 .stm-panel-enter {
-  /* lg = 1024px in the project's Tailwind config; below that we slide up
-     from the bottom because the panel sits BELOW the map at that width. */
-  animation: stm-panel-enter-mobile 400ms cubic-bezier(0.16, 1, 0.3, 1) backwards;
+  animation: stm-panel-enter 550ms cubic-bezier(0.16, 1, 0.3, 1) backwards;
   transform-origin: top right;
-}
-@media (min-width: 1024px) {
-  .stm-panel-enter {
-    animation-name: stm-panel-enter;
-  }
+  will-change: transform, opacity;
 }
 
 @media (prefers-reduced-motion: reduce) {
