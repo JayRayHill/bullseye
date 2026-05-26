@@ -488,8 +488,8 @@ export function TerritoryMap({ customers, allCustomers }: TerritoryMapProps) {
     })
       .setLngLat([c.lng, c.lat])
       .addTo(map);
-    // Remove just after the animation completes (950ms + small buffer).
-    const t = window.setTimeout(() => marker.remove(), 1050);
+    // Remove just after the animation completes (1150ms + small buffer).
+    const t = window.setTimeout(() => marker.remove(), 1250);
     return () => {
       window.clearTimeout(t);
       marker.remove();
@@ -588,12 +588,13 @@ export function TerritoryMap({ customers, allCustomers }: TerritoryMapProps) {
       inner.style.transition = 'transform 120ms ease-out';
       // Stagger fade-in for FRESH selections only — leads are already sorted
       // by distance ascending (nearest first) so the visual sweep reads as
-      // "scanning outward from the active customer." Cap the delay at
-      // 1200ms so the last pin in a long list still lands quickly; ~40ms
-      // per pin gives a nice rolling cadence under 30 pins.
+      // "scanning outward from the active customer." Tuned snappy:
+      // 22ms per pin (was 40ms) keeps the rolling cadence visible without
+      // dragging; cap at 650ms so even a 50-pin batch finishes well inside
+      // the user's attention window after a click.
       if (isFreshSelection) {
         inner.classList.add('stm-lead-pin-enter');
-        inner.style.animationDelay = `${Math.min(i * 40, 1200)}ms`;
+        inner.style.animationDelay = `${Math.min(i * 22, 650)}ms`;
       }
       outer.appendChild(inner);
       inner.addEventListener('mouseenter', () => {
