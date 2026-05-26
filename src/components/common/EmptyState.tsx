@@ -63,29 +63,6 @@ export function EmptyState() {
         </ol>
       </section>
 
-      <details className="rounded-lg border border-slate-200 bg-white p-4 text-sm text-slate-700 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">
-        <summary className="cursor-pointer font-medium text-slate-900 dark:text-slate-100">
-          Expected file format
-        </summary>
-        <div className="mt-3 space-y-2">
-          <p>
-            Required columns: <code className="rounded bg-slate-100 px-1 py-0.5 dark:bg-slate-800">business_name</code>{' '}
-            and <code className="rounded bg-slate-100 px-1 py-0.5 dark:bg-slate-800">zip</code> (5-digit US).
-          </p>
-          <p>
-            <strong>How deals are classified:</strong> a row with a positive{' '}
-            <code className="rounded bg-slate-100 px-1 py-0.5 dark:bg-slate-800">deal_value</code> / REAL LTV is a
-            closed customer (green). Everything else is an open deal (amber) — a form fill we
-            haven&rsquo;t closed yet. Close date and deal status are shown in the detail panel for
-            context but don&rsquo;t affect the pin color.
-          </p>
-          <p>
-            Recognized optional columns: deal_close_date, deal_status, contact_name, email, phone,
-            address, city, state, deal_value, last_contact_date. Any other columns are preserved and
-            shown in the detail panel.
-          </p>
-        </div>
-      </details>
     </div>
   );
 }
