@@ -28,7 +28,6 @@ import { CampaignDrawer } from '../campaign/CampaignDrawer';
 import { BullseyeLogo } from '../brand/BullseyeLogo';
 import { StatsStrip } from '../brand/StatsStrip';
 import { ThemeToggle } from '../brand/ThemeToggle';
-import { CustomerSearch } from './CustomerSearch';
 
 export function Shell() {
   const { dataset, clearDataset } = useData();
@@ -74,10 +73,6 @@ export function Shell() {
               </p>
             </div>
           </div>
-          {/* Centerpiece: fuzzy search across the loaded dataset. Grows to
-              fill space between brand and controls; wraps to its own line on
-              narrow viewports thanks to flex-wrap on the parent. */}
-          <CustomerSearch />
           <div className="flex flex-wrap items-center gap-3">
             <RadiusSlider />
             <ThemeToggle />

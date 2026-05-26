@@ -8,6 +8,7 @@ import clsx from 'clsx';
 import { useFilters } from '../../context/FiltersContext';
 import type { DealStatus } from '../../types';
 import { useData } from '../../context/DataContext';
+import { CustomerSearch } from '../layout/CustomerSearch';
 
 // Status chips reuse the semantic pin palette so the filter visually maps to
 // the map. Active state adds a thick brand-tinted ring. The Lost chip only
@@ -65,6 +66,14 @@ export function FilterBar() {
 
   return (
     <div className="flex flex-wrap items-center gap-3 rounded-xl border border-slate-200 bg-white p-3 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+      {/* CustomerSearch was briefly in the page header but the position
+          felt cramped between brand + controls on narrow viewports. The
+          FilterBar's flex-wrap layout has always been the right home for
+          full-width inputs that need to share space with chip filters.
+          ⌘K still focuses it from anywhere (window-level listener inside
+          the component). */}
+      <CustomerSearch />
+
       <div className="flex items-center gap-1" role="group" aria-label="Deal status filter">
         {STATUS_CHIPS.map((chip) => {
           // Hide the Lost chip when the dataset has no lost rows. Avoids
