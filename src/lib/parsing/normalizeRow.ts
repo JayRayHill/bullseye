@@ -166,7 +166,17 @@ export function normalizeRows(
     const occurrence = sameZipCounter.get(zip) ?? 0;
     const [lat, lng] = jitterCoord(coord[0], coord[1], occurrence);
     sameZipCounter.set(zip, occurrence + 1);
-    const state = readField(row, mapping, alternates, 'state').trim().toUpperCase().slice(0, 2) || undefined;
+    // State source-of-truth: the zip code's canonical state (third element
+    // of the coord tuple). HubSpot exports often have a separately-mapped
+    // "State" column that holds the contact's state of residence, while
+    // the zip belongs to the company's billing address — they don't always
+    // agree (e.g. an Idaho contact attached to a Phoenix AZ company). The
+    // map pins from the zip, so the displayed state should match the pin.
+    // Fall back to the CSV column for the small handful of zips outside
+    // the prefix table (military APO/FPO, edge territories).
+    const zipState = coord[2];
+    const mappedState = readField(row, mapping, alternates, 'state').trim().toUpperCase().slice(0, 2) || undefined;
+    const state = zipState ?? mappedState;
     const city = readField(row, mapping, alternates, 'city').trim() || undefined;
     const contactName = readField(row, mapping, alternates, 'contact_name').trim() || undefined;
     const email = readField(row, mapping, alternates, 'email').trim() || undefined;
