@@ -7,19 +7,28 @@
 // after the header, and a count-up reads as "the app just calculated this
 // for you" rather than "static label." Comma-formatting throughout because
 // "1,119" looks meaningfully different from "1119" at a glance.
+//
+// The "skipped" chip is a button that opens UploadDetailsDialog — the
+// full breakdown (why each row was skipped + per-row offenders) lives in
+// a modal instead of taking up vertical space on the main view.
 
+import { useState } from 'react';
 import type { Dataset } from '../../types';
 import { useCountUp } from '../../hooks/useCountUp';
+import { useData } from '../../context/DataContext';
+import { UploadDetailsDialog } from '../upload/UploadDetailsDialog';
 
 const nf = new Intl.NumberFormat('en-US');
 
 export function StatsStrip({ dataset }: { dataset: Dataset }) {
   const { totals } = dataset;
+  const { uploadErrors } = useData();
   const totalCount = useCountUp(dataset.customers.length);
   const closedCount = useCountUp(totals.closed);
   const openCount = useCountUp(totals.notClosed);
   const lostCount = useCountUp(totals.lost);
   const invalidCount = useCountUp(totals.invalid);
+  const [detailsOpen, setDetailsOpen] = useState(false);
   return (
     <div className="border-t border-slate-200 bg-slate-50 px-4 py-2 text-xs dark:border-slate-800 dark:bg-slate-900/60">
       <div className="mx-auto flex w-full max-w-7xl flex-wrap items-center gap-x-3 gap-y-1 tabular-nums text-slate-600 dark:text-slate-400">
@@ -40,12 +49,26 @@ export function StatsStrip({ dataset }: { dataset: Dataset }) {
         </Chip>
         {totals.lost > 0 ? <Chip color="lost">{nf.format(lostCount)} lost</Chip> : null}
         {totals.invalid > 0 ? (
-          <Chip color="red">{nf.format(invalidCount)} skipped</Chip>
+          <button
+            type="button"
+            onClick={() => setDetailsOpen(true)}
+            title="View import details — why some rows were skipped"
+            className="inline-flex items-center gap-1 rounded-full bg-red-50 px-2 py-0.5 text-xs text-red-900 ring-1 ring-red-200 transition-colors hover:bg-red-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-400 dark:bg-red-900/30 dark:text-red-100 dark:ring-red-800 dark:hover:bg-red-900/50"
+          >
+            {nf.format(invalidCount)} skipped
+            <span aria-hidden="true" className="text-[10px] opacity-70">ⓘ</span>
+          </button>
         ) : null}
         <span className="ml-auto truncate text-slate-500 dark:text-slate-500">
           from <span className="font-medium">{dataset.sourceFilename}</span>
         </span>
       </div>
+      <UploadDetailsDialog
+        open={detailsOpen}
+        dataset={dataset}
+        errors={uploadErrors}
+        onClose={() => setDetailsOpen(false)}
+      />
     </div>
   );
 }

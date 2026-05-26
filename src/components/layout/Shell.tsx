@@ -20,7 +20,6 @@ const TerritoryMap = lazy(() =>
   import('../map/TerritoryMap').then((m) => ({ default: m.TerritoryMap }))
 );
 import { DetailPanel } from '../panel/DetailPanel';
-import { UploadSummary } from '../upload/UploadSummary';
 import { ConfirmDialog } from '../common/ConfirmDialog';
 import { useToast } from '../common/ToastProvider';
 import { SettingsButton } from '../settings/SettingsButton';
@@ -32,7 +31,7 @@ import { ThemeToggle } from '../brand/ThemeToggle';
 import { CustomerSearch } from './CustomerSearch';
 
 export function Shell() {
-  const { dataset, uploadErrors, clearDataset } = useData();
+  const { dataset, clearDataset } = useData();
   const { filters, resetFilters } = useFilters();
   const { clearSelection, activeCustomerId } = useSelection();
   const { clearSelection: clearCampaign } = useCampaign();
@@ -98,14 +97,11 @@ export function Shell() {
       <main className="mx-auto flex w-full max-w-7xl flex-1 flex-col gap-4 px-4 py-4">
         <FilterBar />
 
-        {/* Show the upload summary whenever there's a known skip count in
-            the persisted dataset, not just when ephemeral per-row errors
-            are still in memory. This way the rep sees the breakdown even
-            after a page reload — the per-row list collapses but the
-            categorical counts remain. */}
-        {dataset.totals.invalid > 0 ? (
-          <UploadSummary dataset={dataset} errors={uploadErrors} />
-        ) : null}
+        {/* The import breakdown (X kept / Y skipped + per-reason chips)
+            no longer lives here — it was first-thing-you-see noise on
+            every page load. The "X skipped" chip in StatsStrip (header)
+            is now a button that opens UploadDetailsDialog with the full
+            breakdown on demand. */}
 
         {activeHidden ? (
           <div
