@@ -466,36 +466,6 @@ export function TerritoryMap({ customers, allCustomers }: TerritoryMapProps) {
     });
   }, [activeCustomerId, allCustomers]);
 
-  // ---- 5a. Sonar pulse on selection — a brand-green ring expands out
-  // from the clicked pin to ack the click and start the "scanning for
-  // neighbors" cinematic before the flyTo even lands. One-shot per click;
-  // the CSS animation runs ~950ms then the marker is removed.
-  useEffect(() => {
-    const map = mapRef.current;
-    if (!map || !activeCustomerId) return;
-    const c = allCustomers.find((cust) => cust.id === activeCustomerId);
-    if (!c) return;
-    // Inline-positioned by MapLibre. The visible ring is the child div
-    // (.stm-sonar-pulse) so the CSS animation can scale it without
-    // conflicting with MapLibre's translate() on the wrapper element.
-    const outer = document.createElement('div');
-    const inner = document.createElement('div');
-    inner.className = 'stm-sonar-pulse';
-    outer.appendChild(inner);
-    const marker = new maplibregl.Marker({
-      element: outer,
-      anchor: 'center',
-    })
-      .setLngLat([c.lng, c.lat])
-      .addTo(map);
-    // Remove just after the animation completes (1150ms + small buffer).
-    const t = window.setTimeout(() => marker.remove(), 1250);
-    return () => {
-      window.clearTimeout(t);
-      marker.remove();
-    };
-  }, [activeCustomerId, allCustomers]);
-
   // ---- 5b. Radius preview circle — translucent overlay showing the
   // current search radius around the active customer. Visible the entire
   // time a customer is selected; cleared on deselect. The slider live-

@@ -68,55 +68,14 @@
 }
 
 /* ============================================================
-   Signature motion moments
+   Signature motion moment — staggered lead-pin entrance
    ------------------------------------------------------------
-   These two animations are the "click a closed customer" beat:
-   1. A sonar pulse expands outward from the clicked bullseye to
-      ack the click before the camera even finishes flying.
-   2. Amber lead pins fade in one-by-one (nearest first, ~40ms
-      stagger) so the proximity story reads visually rather than
-      requiring the rep to inspect a list.
-   Keep the durations short (≤1s) — these are reactions, not
-   decorations. Respect prefers-reduced-motion entirely.
+   When a closed customer is selected, the amber lead pins fade
+   in one-by-one (nearest first, ~22ms stagger) so the proximity
+   story reads visually rather than requiring the rep to inspect
+   a list. Short and snappy — this is a reaction, not a
+   decoration. Respects prefers-reduced-motion entirely.
    ============================================================ */
-
-@keyframes stm-sonar-pulse {
-  0% {
-    transform: scale(0.3);
-    opacity: 0.75;
-  }
-  85% {
-    opacity: 0.04;
-  }
-  100% {
-    /* scale 7 on a 44px base puts the final ring at ~308px diameter — big
-       enough to read as a real "scanning my territory" sweep on a busy
-       map, while still settling well before the rep's eye is done tracking
-       the flyTo arrival. Pair with the longer 1.15s duration so the
-       extended distance still feels eased, not zoomy. */
-    transform: scale(7);
-    opacity: 0;
-  }
-}
-
-.stm-sonar-pulse {
-  /* The MapLibre marker positions this element via inline transform on its
-     wrapper, so the visible ring lives in this child and is what gets
-     scaled. 44px starting size puts the ring just outside the bullseye pin. */
-  width: 44px;
-  height: 44px;
-  border-radius: 50%;
-  border: 2px solid #0c5f3f;
-  background: rgba(12, 95, 63, 0.18);
-  pointer-events: none;
-  /* Use forwards so it holds the final (invisible) frame until the parent
-     marker is removed by the React effect cleanup. */
-  animation: stm-sonar-pulse 1150ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
-}
-.dark .stm-sonar-pulse {
-  border-color: #74d2a4;
-  background: rgba(116, 210, 164, 0.18);
-}
 
 @keyframes stm-lead-pin-in {
   from {
@@ -142,7 +101,6 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .stm-sonar-pulse,
   .stm-lead-pin-enter {
     animation: none !important;
   }
