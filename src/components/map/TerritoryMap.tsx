@@ -44,6 +44,7 @@ import { useCampaign } from '../../context/CampaignContext';
 import { useNearbyLeads } from '../../hooks/useNearbyLeads';
 import { useFilters } from '../../context/FiltersContext';
 import { useTheme } from '../../context/ThemeContext';
+import { useSentHistory } from '../../context/SentHistoryContext';
 import { geographicCirclePolygon } from '../../lib/geo/circleGeometry';
 import { loadPinImages, PIN_SVGS } from './icons';
 
@@ -109,6 +110,10 @@ export function TerritoryMap({ customers, allCustomers }: TerritoryMapProps) {
   const { clearSelection: clearCampaignSelection } = useCampaign();
   const { leads } = useNearbyLeads(allCustomers, activeCustomerId, filters.radiusMiles);
   const { effectiveTheme } = useTheme();
+  // Used to decide whether each lead pin should render as the standard
+  // coral teardrop or the pink "already contacted" variant. Reads from the
+  // SentHistoryContext which tracks per-rep sends with a 30-day cooldown.
+  const { isLeadBlocked } = useSentHistory();
   const isDark = effectiveTheme === 'dark';
 
   const containerRef = useRef<HTMLDivElement | null>(null);
@@ -613,7 +618,13 @@ export function TerritoryMap({ customers, allCustomers }: TerritoryMapProps) {
       // the inner — the outer element stays MapLibre's territory.
       const outer = document.createElement('div');
       const inner = document.createElement('div');
-      inner.innerHTML = PIN_SVGS['pin-lead'];
+      // Already-contacted leads (sent within the cooldown window) get the
+      // pink variant so the rep can see at a glance which neighbors they've
+      // already touched without inspecting every list row.
+      const alreadyContacted = isLeadBlocked(lead.customer);
+      inner.innerHTML = alreadyContacted
+        ? PIN_SVGS['pin-lead-contacted']
+        : PIN_SVGS['pin-lead'];
       inner.style.cursor = 'pointer';
       inner.style.transformOrigin = 'center';
       inner.style.transition = 'transform 120ms ease-out';
@@ -638,11 +649,14 @@ export function TerritoryMap({ customers, allCustomers }: TerritoryMapProps) {
         const cityState = [lead.customer.city, lead.customer.state]
           .filter(Boolean)
           .join(', ');
+        const statusLine = alreadyContacted
+          ? `<div style="color: #b8377a;">Already contacted</div>`
+          : `<div style="color: #64748b;">Open</div>`;
         const html = `
           <div style="font-size: 12px; line-height: 1.4;">
             <div style="font-weight: 600;">${escapeHtml(lead.customer.business_name)}</div>
             ${cityState ? `<div style="color: #475569;">${escapeHtml(cityState)}</div>` : ''}
-            <div style="color: #64748b;">Open</div>
+            ${statusLine}
           </div>`;
         popupRef.current = new maplibregl.Popup({
           closeButton: false,
@@ -677,7 +691,7 @@ export function TerritoryMap({ customers, allCustomers }: TerritoryMapProps) {
       leadMarkersRef.current.forEach((m) => m.remove());
       leadMarkersRef.current = [];
     };
-  }, [leads, activeCustomerId, allCustomers, setActive, setHovered]);
+  }, [leads, activeCustomerId, allCustomers, setActive, setHovered, isLeadBlocked]);
 
   // ---- 6b. Ease the camera pitch when the 3D toggle flips. easeTo with
   // duration > 0 means MapLibre interpolates smoothly between angles, so

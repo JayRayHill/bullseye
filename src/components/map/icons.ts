@@ -20,6 +20,11 @@ const LOST_GRAY_LIGHT = '#9ca3af';
 // amber (#f59e0b). Keeps the constant name as LEAD_AMBER for blame-history
 // continuity even though the actual hex is now a coral.
 const LEAD_AMBER = '#ef8b55';
+// Soft brand pink for leads that have already been contacted (i.e. there's
+// a sent-history entry within the cooldown window). Makes the "I've
+// already emailed this one" state visible from the map without needing
+// to open the nearby-leads list and read the cooldown badge.
+const LEAD_CONTACTED_PINK = '#f59bb9';
 const WHITE = '#ffffff';
 
 // We render to a transparent 64×64 canvas for retina; report the logical size
@@ -57,11 +62,12 @@ function lostPin(darkTile: boolean, hover: boolean): string {
   </svg>`;
 }
 
-function leadPin(hover: boolean): string {
+function leadPin(hover: boolean, contacted = false): string {
   const scale = hover ? 1.1 : 1;
+  const fill = contacted ? LEAD_CONTACTED_PINK : LEAD_AMBER;
   return `<svg xmlns="http://www.w3.org/2000/svg" width="${LOGICAL_SIZE}" height="${LOGICAL_SIZE}" viewBox="0 0 32 32">
     <g transform="translate(${(32 - 24 * scale) / 2}, 1) scale(${scale}, ${scale * VERT_FIT})">
-      <path d="M12 0C5.4 0 0 5.4 0 12c0 8 12 20 12 20s12-12 12-20C24 5.4 18.6 0 12 0z" fill="${LEAD_AMBER}" stroke="${WHITE}" stroke-width="2"/>
+      <path d="M12 0C5.4 0 0 5.4 0 12c0 8 12 20 12 20s12-12 12-20C24 5.4 18.6 0 12 0z" fill="${fill}" stroke="${WHITE}" stroke-width="2"/>
       <circle cx="12" cy="12" r="4" fill="${WHITE}"/>
     </g>
   </svg>`;
@@ -77,6 +83,8 @@ export const PIN_SVGS = {
   'pin-lost-dark-hover': lostPin(true, true),
   'pin-lead': leadPin(false),
   'pin-lead-hover': leadPin(true),
+  'pin-lead-contacted': leadPin(false, true),
+  'pin-lead-contacted-hover': leadPin(true, true),
 } as const;
 
 export type PinName = keyof typeof PIN_SVGS;
