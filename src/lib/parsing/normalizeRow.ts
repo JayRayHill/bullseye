@@ -16,6 +16,7 @@
 // change brings it back, but no rule here currently produces 'lost'.
 
 import type {
+  CanonicalField,
   ColumnMapping,
   Customer,
   Dataset,
@@ -24,13 +25,34 @@ import type {
   UploadError,
 } from '../../types';
 import type { ZipCoordMap } from '../../hooks/useZipCoords';
+import type { ColumnAlternates } from './autoDetectColumns';
 import { jitterCoord } from '../geo/jitterCoord';
 import { stableHash } from '../../utils/fuzzyMatch';
 
-function readField(row: RawRow, mapping: ColumnMapping, key: keyof ColumnMapping): string {
-  const header = mapping[key];
-  if (!header) return '';
-  return (row[header] ?? '').toString();
+/** Read a field from a row using the primary mapped column first; if that
+ *  cell is empty, fall back through the alternates (in priority order). This
+ *  recovers values when a HubSpot contact-side column is empty but the
+ *  company-side column has the data, without affecting rows where the
+ *  primary column has its expected value. */
+function readField(
+  row: RawRow,
+  mapping: ColumnMapping,
+  alternates: ColumnAlternates | undefined,
+  key: CanonicalField
+): string {
+  const primary = mapping[key];
+  if (primary) {
+    const v = row[primary];
+    if (v != null && String(v).trim() !== '') return String(v);
+  }
+  const alts = alternates?.[key];
+  if (alts) {
+    for (const alt of alts) {
+      const v = row[alt];
+      if (v != null && String(v).trim() !== '') return String(v);
+    }
+  }
+  return '';
 }
 
 function cleanZip(input: string): string | null {
@@ -71,7 +93,8 @@ export function normalizeRows(
   headers: string[],
   mapping: ColumnMapping,
   zipCoords: ZipCoordMap,
-  sourceFilename: string
+  sourceFilename: string,
+  alternates?: ColumnAlternates
 ): NormalizeResult {
   const customers: Customer[] = [];
   const errors: UploadError[] = [];
@@ -87,7 +110,7 @@ export function normalizeRows(
   let unknownZip = 0;
 
   rows.forEach((row, rowIndex) => {
-    const businessName = readField(row, mapping, 'business_name').trim();
+    const businessName = readField(row, mapping, alternates, 'business_name').trim();
     if (!businessName) {
       missingBusinessName += 1;
       errors.push({
@@ -98,7 +121,7 @@ export function normalizeRows(
       return;
     }
 
-    const rawZip = readField(row, mapping, 'zip');
+    const rawZip = readField(row, mapping, alternates, 'zip');
     const zip = cleanZip(rawZip);
     if (!zip) {
       invalidZip += 1;
@@ -123,8 +146,8 @@ export function normalizeRows(
     // Read classification signals up front. Only deal_value drives status;
     // close date and deal_status are parsed for display in the detail panel
     // but don't change the pin color.
-    const dealValue = parseDealValue(readField(row, mapping, 'deal_value'));
-    const closeDateParsed = parseDate(readField(row, mapping, 'deal_close_date'));
+    const dealValue = parseDealValue(readField(row, mapping, alternates, 'deal_value'));
+    const closeDateParsed = parseDate(readField(row, mapping, alternates, 'deal_close_date'));
 
     // Binary classification: has REAL LTV → closed, else open deal.
     const hasPositiveLTV = dealValue !== undefined && dealValue > 0;
@@ -133,13 +156,13 @@ export function normalizeRows(
     const occurrence = sameZipCounter.get(zip) ?? 0;
     const [lat, lng] = jitterCoord(coord[0], coord[1], occurrence);
     sameZipCounter.set(zip, occurrence + 1);
-    const state = readField(row, mapping, 'state').trim().toUpperCase().slice(0, 2) || undefined;
-    const city = readField(row, mapping, 'city').trim() || undefined;
-    const contactName = readField(row, mapping, 'contact_name').trim() || undefined;
-    const email = readField(row, mapping, 'email').trim() || undefined;
-    const phone = readField(row, mapping, 'phone').trim() || undefined;
-    const address = readField(row, mapping, 'address').trim() || undefined;
-    const lastContact = parseDate(readField(row, mapping, 'last_contact_date'));
+    const state = readField(row, mapping, alternates, 'state').trim().toUpperCase().slice(0, 2) || undefined;
+    const city = readField(row, mapping, alternates, 'city').trim() || undefined;
+    const contactName = readField(row, mapping, alternates, 'contact_name').trim() || undefined;
+    const email = readField(row, mapping, alternates, 'email').trim() || undefined;
+    const phone = readField(row, mapping, alternates, 'phone').trim() || undefined;
+    const address = readField(row, mapping, alternates, 'address').trim() || undefined;
+    const lastContact = parseDate(readField(row, mapping, alternates, 'last_contact_date'));
 
     const id = stableHash(`${rowIndex}|${zip}|${businessName.toLowerCase()}`);
 

@@ -40,13 +40,16 @@ export function UploadDropzone() {
         }
         // Pass rows so auto-detect can score candidate columns by fill rate
         // (handles HubSpot's contact+company joined exports where duplicate
-        // headers like "Postal Code" / "Postal Code_1" exist).
-        const autoMapping = autoDetectColumns(parsed.headers, parsed.rows);
+        // headers like "Postal Code" / "Postal Code_1" exist). The returned
+        // `alternates` becomes the row-level fallback chain used by
+        // normalizeRow when the primary column is empty for a specific row.
+        const { mapping, alternates } = autoDetectColumns(parsed.headers, parsed.rows);
         startMapping({
           filename: file.name,
           headers: parsed.headers,
           rows: parsed.rows,
-          autoMapping,
+          autoMapping: mapping,
+          alternates,
         });
       } catch (e) {
         const message = e instanceof Error ? e.message : 'Failed to parse the file.';

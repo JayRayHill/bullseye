@@ -79,7 +79,8 @@ export function ColumnMappingForm() {
         pending.headers,
         mapping,
         coords,
-        pending.filename
+        pending.filename,
+        pending.alternates
       );
       if (dataset.customers.length === 0) {
         toast.show(

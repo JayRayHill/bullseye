@@ -94,8 +94,24 @@ const ALIASES: Record<CanonicalField, string[]> = {
 // mostly-populated one, even on huge exports.
 const FILL_RATE_SAMPLE = 200;
 
-export function autoDetectColumns(headers: string[], rows: RawRow[] = []): ColumnMapping {
+/** Per-field list of secondary candidate columns, ranked by fill rate after
+ *  the primary winner. normalizeRow tries each in order if the primary is
+ *  empty for a specific row — major win for HubSpot's contact-vs-company
+ *  joined exports where the company-side column might have data the
+ *  contact-side column doesn't. */
+export type ColumnAlternates = Partial<Record<CanonicalField, string[]>>;
+
+export interface AutoDetectResult {
+  mapping: ColumnMapping;
+  alternates: ColumnAlternates;
+}
+
+export function autoDetectColumns(
+  headers: string[],
+  rows: RawRow[] = []
+): AutoDetectResult {
   const mapping: ColumnMapping = {};
+  const alternates: ColumnAlternates = {};
   const normalized = headers.map((h) => ({ raw: h, norm: normalizeHeader(h) }));
   // Sample once and reuse across all fields.
   const sample = rows.slice(0, Math.min(FILL_RATE_SAMPLE, rows.length));
@@ -116,19 +132,34 @@ export function autoDetectColumns(headers: string[], rows: RawRow[] = []): Colum
     const aliasSet = new Set(aliases);
 
     // Exact matches are semantically reliable — "Company Name" means business
-    // name, period. Substring matches are LAST-RESORT only, because they're
-    // too permissive ("First Name" substring-matches the alias 'name' for
-    // business_name, "Contact owner" matches 'owner', etc.). We try exact
-    // first, fall back to substring only when no exact matches exist at all.
+    // name, period.
     const exactMatches = normalized.filter((h) => aliasSet.has(h.norm));
-    let candidates: typeof normalized;
-    if (exactMatches.length > 0) {
-      candidates = exactMatches;
-    } else {
-      candidates = normalized.filter((h) =>
-        aliases.some((a) => h.norm.includes(a))
+
+    // Strong substring matches: the alias accounts for ≥70% of the header.
+    // This catches HubSpot's dedupe-suffixed duplicates like "Postal Code_1"
+    // (alias 'postalcode' is 10 of 11 chars = 91% — strong) without dragging
+    // in noise like "First Name" or "Last Name" matching alias 'name'
+    // (4 of 9 chars = 44% — weak, rejected).
+    const strongSubstring = normalized.filter((h) => {
+      if (aliasSet.has(h.norm)) return false; // already covered by exact
+      return aliases.some(
+        (a) => h.norm.includes(a) && a.length / h.norm.length >= 0.7
       );
-    }
+    });
+
+    // Weak substring matches: last-resort, only used when no exact matches
+    // exist. Keeps the old "Account Name (Primary)" → business_name behavior
+    // for files that don't have a clean exact match anywhere.
+    const weakSubstring =
+      exactMatches.length === 0 && strongSubstring.length === 0
+        ? normalized.filter((h) =>
+            aliases.some((a) => h.norm.includes(a))
+          )
+        : [];
+
+    // Build the candidate pool: exact first, then strong substring (dedupe
+    // suffixes), then weak substring (legacy fallback).
+    const candidates = [...exactMatches, ...strongSubstring, ...weakSubstring];
 
     if (candidates.length === 0) {
       mapping[field] = null;
@@ -138,23 +169,22 @@ export function autoDetectColumns(headers: string[], rows: RawRow[] = []): Colum
       mapping[field] = candidates[0].raw;
       continue;
     }
-    // Multiple candidates of the SAME kind (all exact, or all substring) —
-    // score each by how many of the sampled rows have a value, pick the
-    // highest. Ties keep the earlier candidate (matches header order).
-    // This is what saves us from HubSpot's duplicate "Postal Code" columns:
-    // both exact-match, fill rate distinguishes the populated one.
-    let bestRaw = candidates[0].raw;
-    let bestFill = fillRate(bestRaw);
-    for (let i = 1; i < candidates.length; i++) {
-      const f = fillRate(candidates[i].raw);
-      if (f > bestFill) {
-        bestFill = f;
-        bestRaw = candidates[i].raw;
-      }
-    }
-    mapping[field] = bestRaw;
+
+    // Rank by fill rate. Exact matches still tend to win the primary slot
+    // because they typically have the most populated data — but if a
+    // dedupe-suffixed duplicate is more populated for any given row, we'll
+    // fall back to it in normalizeRow.
+    const ranked = candidates
+      .map((c) => ({ raw: c.raw, fill: fillRate(c.raw) }))
+      .sort((a, b) => b.fill - a.fill);
+    mapping[field] = ranked[0].raw;
+    const fallbacks = ranked
+      .slice(1)
+      .filter((c) => c.fill > 0) // skip alternates with literally zero data
+      .map((c) => c.raw);
+    if (fallbacks.length > 0) alternates[field] = fallbacks;
   }
-  return mapping;
+  return { mapping, alternates };
 }
 
 // Only business_name + zip are required. Whether a deal is "closed" is determined

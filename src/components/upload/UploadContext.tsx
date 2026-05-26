@@ -6,12 +6,17 @@
 
 import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from 'react';
 import type { ColumnMapping, RawRow } from '../../types';
+import type { ColumnAlternates } from '../../lib/parsing/autoDetectColumns';
 
 export interface PendingUpload {
   filename: string;
   headers: string[];
   rows: RawRow[];
   autoMapping: ColumnMapping;
+  /** Per-field secondary candidate columns (ranked by fill rate). Used by
+   *  normalizeRow to recover values when the primary mapped column is empty
+   *  for a specific row. */
+  alternates: ColumnAlternates;
 }
 
 interface UploadContextValue {
