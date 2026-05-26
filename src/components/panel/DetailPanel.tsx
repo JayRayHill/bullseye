@@ -12,6 +12,7 @@ import { useSentHistory } from '../../context/SentHistoryContext';
 import { useNearbyLeads } from '../../hooks/useNearbyLeads';
 import { ActiveCustomerCard } from './ActiveCustomerCard';
 import { AdditionalFields } from './AdditionalFields';
+import { CustomerNotes } from './CustomerNotes';
 import { NearbyLeadsList } from './NearbyLeadsList';
 
 export function DetailPanel() {
@@ -95,6 +96,7 @@ export function DetailPanel() {
         </button>
       </div>
       <ActiveCustomerCard customer={active} />
+      <CustomerNotes customer={active} />
       <AdditionalFields customer={active} mapping={columnMapping} headers={dataset.headers} />
       <NearbyLeadsList leads={leads} radiusMiles={filters.radiusMiles} />
       {selectionCount > 0 ? (

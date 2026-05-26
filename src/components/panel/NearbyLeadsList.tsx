@@ -11,6 +11,7 @@ import type { NearbyLead } from '../../hooks/useNearbyLeads';
 import { useSelection } from '../../context/SelectionContext';
 import { useCampaign } from '../../context/CampaignContext';
 import { useSentHistory } from '../../context/SentHistoryContext';
+import { useNotes } from '../../context/NotesContext';
 import { daysSince, cooldownExpiry } from '../../lib/email/sentHistory';
 import { findTemplate } from '../../lib/email/templates';
 
@@ -102,6 +103,8 @@ function LeadRow({ lead }: { lead: NearbyLead }) {
   const { setActive, setHovered, hoveredId } = useSelection();
   const { selectedLeadIds, toggleLead } = useCampaign();
   const { lookup } = useSentHistory();
+  const { hasNote } = useNotes();
+  const noted = hasNote(lead.customer);
   const isHover = hoveredId === lead.customer.id;
   const cityState = [lead.customer.city, lead.customer.state].filter(Boolean).join(', ');
   const hasEmail = !!lead.customer.email;
@@ -164,6 +167,15 @@ function LeadRow({ lead }: { lead: NearbyLead }) {
       >
         <span className="min-w-0 flex-1 truncate">
           <span className="font-medium text-slate-900 dark:text-slate-100">{lead.customer.business_name}</span>
+          {noted ? (
+            <span
+              aria-label="Has notes"
+              title="Notes saved for this customer"
+              className="ml-2 inline-flex shrink-0 items-center rounded bg-brand-50 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-brand-700 dark:bg-brand-900/40 dark:text-brand-200"
+            >
+              📝 notes
+            </span>
+          ) : null}
           {blocked && sentEntry ? (
             <span
               className="ml-2 inline-flex shrink-0 items-center rounded bg-slate-200 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-slate-700 dark:bg-slate-700 dark:text-slate-300"
