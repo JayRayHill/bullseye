@@ -17,6 +17,7 @@ import { NotesProvider } from './context/NotesContext';
 import { ThemeProvider } from './context/ThemeContext';
 import { ToastProvider } from './components/common/ToastProvider';
 import { TopProgressBar } from './components/common/TopProgressBar';
+import { SupabaseErrorToast } from './components/common/SupabaseErrorToast';
 import { UploadProvider } from './components/upload/UploadContext';
 import { ColumnMappingForm } from './components/upload/ColumnMappingForm';
 import { EmptyState } from './components/common/EmptyState';
@@ -85,6 +86,7 @@ function AuthGate() {
         </FiltersProvider>
       </DataProvider>
       <TopProgressBar />
+      <SupabaseErrorToast />
     </ToastProvider>
   );
 }

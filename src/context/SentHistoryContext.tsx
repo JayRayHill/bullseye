@@ -134,10 +134,16 @@ export function SentHistoryProvider({ children }: { children: ReactNode }) {
         .order('emailed_at', { ascending: false });
       if (cancelled) return;
       if (error) {
-        // Surface to console; the cooldown system still works locally from
-        // an empty state, just no team data until the connection recovers.
+        // Surface to console + toast. Cooldown system still works from an
+        // empty local state, but the rep needs to know the team data
+        // isn't loading.
         // eslint-disable-next-line no-console
         console.error('[sent-history] initial fetch failed:', error);
+        window.dispatchEvent(
+          new CustomEvent('bullseye:supabase-error', {
+            detail: { op: 'sent_history.fetch', message: error.message },
+          })
+        );
         setSharedHydrated(true);
         return;
       }
@@ -217,6 +223,17 @@ export function SentHistoryProvider({ children }: { children: ReactNode }) {
         if (error) {
           // eslint-disable-next-line no-console
           console.error('[sent-history] insert failed:', error);
+          // Surface to the rep too — silent failures were making team-mode
+          // breakage invisible. Dispatching a window event so the toast can
+          // be shown without coupling the context to the toast provider.
+          window.dispatchEvent(
+            new CustomEvent('bullseye:supabase-error', {
+              detail: {
+                op: 'sent_history.insert',
+                message: error.message,
+              },
+            })
+          );
           return;
         }
         // Optimistic cache update so the UI reacts immediately instead of
