@@ -103,7 +103,9 @@
 /* Bullseye logo intro — concentric rings scale up from the center one by
    one, with a subtle elastic overshoot. transform-box: fill-box anchors the
    transform-origin to each circle individually so they all scale around
-   their own centers (not the SVG viewport's origin). */
+   their own centers (not the SVG viewport's origin). Tuned slower than the
+   first pass (480ms vs 360ms, 140ms between rings vs 90ms) so the
+   sequence registers as a deliberate intro instead of a blur. */
 @keyframes stm-bullseye-ring-in {
   from { transform: scale(0); }
   to   { transform: scale(1); }
@@ -113,16 +115,68 @@
   transform-origin: center;
   /* cubic-bezier(0.34, 1.56, 0.64, 1) is the "easeOutBack" curve — gives
      a hint of overshoot for an alive, springy feel without going cartoony. */
-  animation: stm-bullseye-ring-in 360ms cubic-bezier(0.34, 1.56, 0.64, 1) backwards;
+  animation: stm-bullseye-ring-in 480ms cubic-bezier(0.34, 1.56, 0.64, 1) backwards;
 }
 
-/* Detail panel mount transition — a small slide-up + fade. Keyed on the
-   active customer id in DetailPanel.tsx so it re-fires on each new
-   selection, matching the per-selection cinematic on the map. */
+/* Brand-green halo pulse that fires AFTER the rings finish — sits behind
+   the logo SVG and rapidly expands + fades. Gives the intro a "ta-da"
+   landing moment so the eye actually catches that something happened.
+   The host element (set via .stm-bullseye-halo wrapper in
+   BullseyeLogo.tsx) supplies position: relative + the box where the halo
+   sits. */
+@keyframes stm-bullseye-halo {
+  0% {
+    opacity: 0;
+    transform: scale(0.6);
+  }
+  20% {
+    opacity: 0.55;
+  }
+  100% {
+    opacity: 0;
+    transform: scale(2.2);
+  }
+}
+.stm-bullseye-halo {
+  position: relative;
+  display: inline-flex;
+}
+.stm-bullseye-halo::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 9999px;
+  background: radial-gradient(circle, rgba(12, 95, 63, 0.55) 0%, rgba(12, 95, 63, 0) 65%);
+  pointer-events: none;
+  /* Delay = (ring count × inter-ring delay) + per-ring duration tail to
+     line up with the rings settling — 4 rings × 140ms + ~120ms tail. */
+  animation: stm-bullseye-halo 700ms cubic-bezier(0.16, 1, 0.3, 1) 560ms backwards;
+}
+.dark .stm-bullseye-halo::after {
+  background: radial-gradient(circle, rgba(116, 210, 164, 0.5) 0%, rgba(116, 210, 164, 0) 65%);
+}
+
+/* Detail panel mount transition — slide-in from the right (on desktop) or
+   from below (on mobile) plus a small scale settle so it feels like it
+   physically arrives rather than blinking in. Keyed on the active
+   customer id in DetailPanel.tsx so it re-fires on each new selection,
+   matching the per-selection cinematic on the map. Tuned BIG (32px slide,
+   400ms duration) so it actually registers — earlier 10px/240ms was
+   imperceptible. */
 @keyframes stm-panel-enter {
   from {
     opacity: 0;
-    transform: translateY(10px);
+    transform: translateX(32px) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes stm-panel-enter-mobile {
+  from {
+    opacity: 0;
+    transform: translateY(28px) scale(0.97);
   }
   to {
     opacity: 1;
@@ -130,12 +184,21 @@
   }
 }
 .stm-panel-enter {
-  animation: stm-panel-enter 240ms cubic-bezier(0.16, 1, 0.3, 1) backwards;
+  /* lg = 1024px in the project's Tailwind config; below that we slide up
+     from the bottom because the panel sits BELOW the map at that width. */
+  animation: stm-panel-enter-mobile 400ms cubic-bezier(0.16, 1, 0.3, 1) backwards;
+  transform-origin: top right;
+}
+@media (min-width: 1024px) {
+  .stm-panel-enter {
+    animation-name: stm-panel-enter;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
   .stm-lead-pin-enter,
   .stm-bullseye-ring,
+  .stm-bullseye-halo::after,
   .stm-panel-enter {
     animation: none !important;
   }

@@ -28,7 +28,7 @@ export function BullseyeLogo({
   const shouldAnimate = animated && !hasPlayedLogoIntro;
   if (shouldAnimate) hasPlayedLogoIntro = true;
   const ringClass = shouldAnimate ? 'stm-bullseye-ring' : undefined;
-  return (
+  const svg = (
     <svg
       xmlns="http://www.w3.org/2000/svg"
       width={size}
@@ -55,7 +55,7 @@ export function BullseyeLogo({
         r="10"
         fill="#ffffff"
         className={ringClass}
-        style={shouldAnimate ? { animationDelay: '90ms' } : undefined}
+        style={shouldAnimate ? { animationDelay: '140ms' } : undefined}
       />
       {/* inner brand ring */}
       <circle
@@ -64,7 +64,7 @@ export function BullseyeLogo({
         r="6"
         fill="#0c5f3f"
         className={ringClass}
-        style={shouldAnimate ? { animationDelay: '180ms' } : undefined}
+        style={shouldAnimate ? { animationDelay: '280ms' } : undefined}
       />
       {/* bullseye dot */}
       <circle
@@ -73,8 +73,14 @@ export function BullseyeLogo({
         r="2"
         fill="#ffffff"
         className={ringClass}
-        style={shouldAnimate ? { animationDelay: '270ms' } : undefined}
+        style={shouldAnimate ? { animationDelay: '420ms' } : undefined}
       />
     </svg>
   );
+  // When animating, wrap in a halo container so the ::after radial gradient
+  // can pulse outward AFTER the rings finish settling — the "ta-da" landing.
+  if (shouldAnimate) {
+    return <span className="stm-bullseye-halo">{svg}</span>;
+  }
+  return svg;
 }
