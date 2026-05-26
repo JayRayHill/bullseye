@@ -16,7 +16,10 @@ const BRAND_700 = '#0c5f3f';
 const BRAND_300 = '#74d2a4';
 const LOST_GRAY = '#6b7280';
 const LOST_GRAY_LIGHT = '#9ca3af';
-const LEAD_AMBER = '#f59e0b';
+// Brand coral for open-lead pins — warmer and softer than the previous
+// amber (#f59e0b). Keeps the constant name as LEAD_AMBER for blame-history
+// continuity even though the actual hex is now a coral.
+const LEAD_AMBER = '#ef8b55';
 const WHITE = '#ffffff';
 
 // We render to a transparent 64×64 canvas for retina; report the logical size
