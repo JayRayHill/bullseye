@@ -15,6 +15,7 @@ import { AdditionalFields } from './AdditionalFields';
 import { CustomerNotes } from './CustomerNotes';
 import { NearbyLeadsList } from './NearbyLeadsList';
 import { TopTargets } from './TopTargets';
+import { MarkContactedButton } from './MarkContactedButton';
 
 export function DetailPanel() {
   const { dataset, columnMapping } = useData();
@@ -30,17 +31,19 @@ export function DetailPanel() {
     filters.radiusMiles
   );
 
-  // Only count leads that aren't cooldowned — the sticky bar should match what
-  // the campaign drawer will actually let the rep send to.
-  const selectionCount = useMemo(() => {
-    let count = 0;
+  // Compute the actual list of selected, non-cooldowned customers in one
+  // pass so both the count and the bulk "Mark contacted" button can read
+  // from the same source.
+  const selectedCustomers = useMemo(() => {
+    const out = [];
     for (const lead of leads) {
       if (selectedLeadIds.has(lead.customer.id) && !isLeadBlocked(lead.customer)) {
-        count++;
+        out.push(lead.customer);
       }
     }
-    return count;
+    return out;
   }, [leads, selectedLeadIds, isLeadBlocked]);
+  const selectionCount = selectedCustomers.length;
 
   // Move focus to the heading on selection change for screen readers + keyboard.
   useEffect(() => {
@@ -108,7 +111,7 @@ export function DetailPanel() {
       <AdditionalFields customer={active} mapping={columnMapping} headers={dataset.headers} />
       <NearbyLeadsList leads={leads} radiusMiles={filters.radiusMiles} />
       {selectionCount > 0 ? (
-        <div className="sticky bottom-0 -mx-5 -mb-5 mt-2 border-t border-brand-100 bg-brand-50/90 px-5 py-3 backdrop-blur dark:border-brand-900 dark:bg-brand-950/80">
+        <div className="sticky bottom-0 -mx-5 -mb-5 mt-2 flex flex-col gap-2 border-t border-brand-100 bg-brand-50/90 px-5 py-3 backdrop-blur dark:border-brand-900 dark:bg-brand-950/80">
           <button
             type="button"
             onClick={openDrawer}
@@ -119,6 +122,14 @@ export function DetailPanel() {
             </span>
             <span aria-hidden="true">→</span>
           </button>
+          {/* Sibling action: skip the email flow and just log a non-email
+              touch (called, texted, met in person, other) on all selected
+              leads at once. Same cooldown rules apply, same pink-pin
+              treatment. Anchored right so it sits under the chevron of the
+              primary action. */}
+          <div className="flex justify-end">
+            <MarkContactedButton customer={selectedCustomers} variant="button" />
+          </div>
         </div>
       ) : null}
     </section>

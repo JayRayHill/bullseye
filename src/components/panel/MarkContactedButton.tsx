@@ -16,7 +16,8 @@ import { useSettings } from '../../context/SettingsContext';
 import { useToast } from '../common/ToastProvider';
 
 interface MarkContactedButtonProps {
-  customer: Customer;
+  /** Single customer or a list (for bulk-mark from a multi-select). */
+  customer: Customer | Customer[];
   /** Optional anchor customer to attach to the record (when "Mark contacted"
    *  fires from inside a nearby-leads list with an active closed customer).
    *  Lets the Settings → sent history view show "called via Lone Star Foods". */
@@ -24,6 +25,14 @@ interface MarkContactedButtonProps {
   /** Hide the button entirely when the lead is already in cooldown. The
    *  list still shows the cooldown badge from elsewhere. */
   disabled?: boolean;
+  /** Visual variant of the trigger:
+   *  - "icon"   — small icon-only button (default; used inside lead-list rows).
+   *  - "button" — full button with text + chevron (used in the active-customer
+   *               card and the bulk-action sticky bar). */
+  variant?: 'icon' | 'button';
+  /** Label override for the "button" variant. Defaults to "Mark contacted"
+   *  for one customer, "Mark N as contacted" for multiple. */
+  label?: string;
 }
 
 // Stroke-icon set matching the rest of the app's icon language (the Settings
@@ -83,12 +92,19 @@ export function MarkContactedButton({
   customer,
   anchor,
   disabled,
+  variant = 'icon',
+  label,
 }: MarkContactedButtonProps) {
   const { recordSent } = useSentHistory();
   const { settings } = useSettings();
   const toast = useToast();
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement | null>(null);
+
+  // Normalize single/multi into a list so the rest of the component doesn't
+  // care which form the caller passed.
+  const customers = Array.isArray(customer) ? customer : [customer];
+  const count = customers.length;
 
   // Click outside / Esc to close the picker.
   useEffect(() => {
@@ -107,44 +123,88 @@ export function MarkContactedButton({
     };
   }, [open]);
 
-  const onPick = async (method: SendMethod, label: string) => {
+  const onPick = async (method: SendMethod, methodLabel: string) => {
     setOpen(false);
     await recordSent({
-      leads: [customer],
+      leads: customers,
       anchor,
       method,
       recordedBy: settings.firstName,
     });
-    toast.show(
-      'info',
-      `${label} ${customer.business_name}. Added to sent history.`
-    );
+    // Tailor the toast copy to single vs bulk so the rep sees what actually
+    // happened.
+    if (count === 1) {
+      toast.show(
+        'info',
+        `${methodLabel} ${customers[0].business_name}. Added to sent history.`
+      );
+    } else {
+      toast.show(
+        'info',
+        `${methodLabel} ${count} leads. All added to sent history.`
+      );
+    }
   };
 
-  if (disabled) return null;
+  if (disabled || count === 0) return null;
+
+  const buttonLabel =
+    label ?? (count === 1 ? 'Mark contacted' : `Mark ${count} as contacted`);
 
   return (
     <div ref={ref} className="relative">
-      <button
-        type="button"
-        onClick={(e) => {
-          e.stopPropagation();
-          setOpen((v) => !v);
-        }}
-        aria-haspopup="menu"
-        aria-expanded={open}
-        title="Mark this lead as contacted (phone, text, in-person…)"
-        className="rounded-md p-1 text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-900 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-400 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-100"
-      >
-        {/* Phone-with-dots glyph — quick visual cue for "log a touch". */}
-        <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.8">
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            d="M2.25 6.75c0 8.284 6.716 15 15 15h2.25a2.25 2.25 0 002.25-2.25v-1.372c0-.516-.351-.966-.852-1.091l-4.423-1.105a2.25 2.25 0 00-2.276.583l-.997.997a17.275 17.275 0 01-6.197-6.197l.997-.997a2.25 2.25 0 00.583-2.276L6.43 3.602A1.125 1.125 0 005.339 2.75H3.967A2.25 2.25 0 001.717 5v1.75z"
-          />
-        </svg>
-      </button>
+      {variant === 'icon' ? (
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            setOpen((v) => !v);
+          }}
+          aria-haspopup="menu"
+          aria-expanded={open}
+          title="Mark this lead as contacted (phone, text, in-person…)"
+          className="rounded-md p-1 text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-900 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-400 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-100"
+        >
+          {/* Phone-with-dots glyph — quick visual cue for "log a touch". */}
+          <svg
+            viewBox="0 0 24 24"
+            className="h-4 w-4"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.8"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              d="M2.25 6.75c0 8.284 6.716 15 15 15h2.25a2.25 2.25 0 002.25-2.25v-1.372c0-.516-.351-.966-.852-1.091l-4.423-1.105a2.25 2.25 0 00-2.276.583l-.997.997a17.275 17.275 0 01-6.197-6.197l.997-.997a2.25 2.25 0 00.583-2.276L6.43 3.602A1.125 1.125 0 005.339 2.75H3.967A2.25 2.25 0 001.717 5v1.75z"
+            />
+          </svg>
+        </button>
+      ) : (
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            setOpen((v) => !v);
+          }}
+          aria-haspopup="menu"
+          aria-expanded={open}
+          className="inline-flex items-center gap-2 rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm font-medium text-slate-800 transition-colors hover:bg-slate-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-400 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:hover:bg-slate-800"
+        >
+          <PhoneIcon />
+          <span>{buttonLabel}</span>
+          <svg
+            viewBox="0 0 12 12"
+            className="h-3 w-3 text-slate-400"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.8"
+            aria-hidden="true"
+          >
+            <path strokeLinecap="round" strokeLinejoin="round" d="M3 4.5l3 3 3-3" />
+          </svg>
+        </button>
+      )}
 
       {open ? (
         <div

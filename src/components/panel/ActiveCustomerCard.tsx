@@ -1,8 +1,16 @@
 // Displays the recognized fields for the active customer at the top of the panel.
 // We render in a forgiving way — every optional field is omitted if absent rather
 // than rendered as an empty row.
+//
+// For OPEN leads (deal_status === 'not_closed'), we also render a prominent
+// "Mark contacted" button so the rep can log a phone/text/in-person touch on
+// the lead they're currently viewing without having to find it again in the
+// nearby-leads list. Hidden when the lead is already in cooldown — the
+// cooldown badge from elsewhere already communicates that state.
 
 import type { Customer } from '../../types';
+import { MarkContactedButton } from './MarkContactedButton';
+import { useSentHistory } from '../../context/SentHistoryContext';
 
 function StatusBadge({ status }: { status: Customer['deal_status'] }) {
   const styles =
@@ -17,6 +25,12 @@ function StatusBadge({ status }: { status: Customer['deal_status'] }) {
 
 export function ActiveCustomerCard({ customer }: { customer: Customer }) {
   const cityState = [customer.city, customer.state].filter(Boolean).join(', ');
+  const { isLeadBlocked } = useSentHistory();
+  // Only open leads benefit from "Mark contacted" — closed/lost customers
+  // aren't outreach targets. Cooldowned leads already show their status via
+  // the badge in the list, so hide the button to avoid double-affordance.
+  const showMarkContacted =
+    customer.deal_status === 'not_closed' && !isLeadBlocked(customer);
   return (
     <div className="space-y-3">
       <div className="flex items-start justify-between gap-3">
@@ -46,6 +60,11 @@ export function ActiveCustomerCard({ customer }: { customer: Customer }) {
           <Row label="Last contact" value={formatDate(customer.last_contact_date)} />
         ) : null}
       </dl>
+      {showMarkContacted ? (
+        <div className="pt-1">
+          <MarkContactedButton customer={customer} variant="button" />
+        </div>
+      ) : null}
     </div>
   );
 }
