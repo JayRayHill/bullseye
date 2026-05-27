@@ -21,6 +21,12 @@ interface CampaignContextValue {
   customizedSubject: string | null;
   customizedBody: string | null;
   drawerOpen: boolean;
+  /** Optional explicit anchor — set by the per-lead "Send email" flow when
+   *  the active customer IS the recipient lead (not a closed customer) and
+   *  the rep needs a separate proof-point anchor. The drawer prefers this
+   *  over the active customer when resolving its anchor.
+   *  Cleared automatically when the drawer closes. */
+  overrideAnchorId: string | null;
 
   toggleLead: (id: string) => void;
   selectLeads: (ids: string[], selected: boolean) => void;
@@ -32,6 +38,12 @@ interface CampaignContextValue {
   resetCustomizations: () => void;
 
   openDrawer: () => void;
+  /** Open the drawer with a single specific lead + an explicit anchor.
+   *  Replaces any existing selection. Used by the "Send email" button on
+   *  open-lead detail cards, where the rep wants to email this one lead
+   *  using a previously-viewed (or auto-picked nearest) closed customer
+   *  as the proof point. */
+  openDrawerForLead: (leadId: string, anchorId: string) => void;
   closeDrawer: () => void;
 }
 
@@ -51,6 +63,7 @@ export function CampaignProvider({
   const [customizedSubject, setCustomizedSubjectState] = useState<string | null>(null);
   const [customizedBody, setCustomizedBodyState] = useState<string | null>(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [overrideAnchorId, setOverrideAnchorId] = useState<string | null>(null);
 
   const toggleLead = useCallback((id: string) => {
     setSelectedLeadIds((prev) => {
@@ -91,7 +104,23 @@ export function CampaignProvider({
   }, []);
 
   const openDrawer = useCallback(() => setDrawerOpen(true), []);
-  const closeDrawer = useCallback(() => setDrawerOpen(false), []);
+  const openDrawerForLead = useCallback((leadId: string, anchorId: string) => {
+    // Replace any prior selection — this entry point is "email THIS one
+    // lead," not "add to existing batch."
+    setSelectedLeadIds(new Set([leadId]));
+    setOverrideAnchorId(anchorId);
+    // Reset any in-drawer customizations from a previous campaign so the
+    // new flow opens with a fresh template state.
+    setCustomizedSubjectState(null);
+    setCustomizedBodyState(null);
+    setDrawerOpen(true);
+  }, []);
+  const closeDrawer = useCallback(() => {
+    setDrawerOpen(false);
+    // Clear the override on close so the next normal "Build campaign"
+    // flow doesn't accidentally inherit the override.
+    setOverrideAnchorId(null);
+  }, []);
 
   const value = useMemo<CampaignContextValue>(
     () => ({
@@ -100,6 +129,7 @@ export function CampaignProvider({
       customizedSubject,
       customizedBody,
       drawerOpen,
+      overrideAnchorId,
       toggleLead,
       selectLeads,
       clearSelection,
@@ -108,6 +138,7 @@ export function CampaignProvider({
       setCustomizedBody: setCustomizedBodyState,
       resetCustomizations,
       openDrawer,
+      openDrawerForLead,
       closeDrawer,
     }),
     [
@@ -116,12 +147,14 @@ export function CampaignProvider({
       customizedSubject,
       customizedBody,
       drawerOpen,
+      overrideAnchorId,
       toggleLead,
       selectLeads,
       clearSelection,
       setActiveTemplate,
       resetCustomizations,
       openDrawer,
+      openDrawerForLead,
       closeDrawer,
     ]
   );

@@ -6,7 +6,7 @@
 // they can be opened from anywhere in the tree (e.g. the campaign drawer
 // auto-prompts the settings dialog).
 
-import { lazy, Suspense, useCallback, useState } from 'react';
+import { lazy, Suspense, useCallback, useEffect, useState } from 'react';
 import { useData } from '../../context/DataContext';
 import { useFilteredCustomers } from '../../hooks/useFilteredCustomers';
 import { useFilters } from '../../context/FiltersContext';
@@ -32,7 +32,20 @@ import { ThemeToggle } from '../brand/ThemeToggle';
 export function Shell() {
   const { dataset, clearDataset } = useData();
   const { filters, resetFilters } = useFilters();
-  const { clearSelection, activeCustomerId } = useSelection();
+  const { clearSelection, activeCustomerId, setLastAnchor } = useSelection();
+
+  // Track "what closed customer was the rep last viewing" so that when they
+  // drill into an open lead from a closed customer's nearby-leads list, the
+  // "Send email" button on the lead's card can still resolve a proof-point
+  // anchor. Lives here (not inside SelectionContext) because the lookup
+  // needs the Customer dataset, which SelectionContext doesn't have.
+  useEffect(() => {
+    if (!activeCustomerId || !dataset) return;
+    const active = dataset.customers.find((c) => c.id === activeCustomerId);
+    if (active && active.deal_status === 'closed') {
+      setLastAnchor(activeCustomerId);
+    }
+  }, [activeCustomerId, dataset, setLastAnchor]);
   const { clearSelection: clearCampaign } = useCampaign();
   const toast = useToast();
   const filtered = useFilteredCustomers(dataset?.customers ?? [], filters);

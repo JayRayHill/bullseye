@@ -13,13 +13,12 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { useData } from '../../context/DataContext';
-import { useFilters } from '../../context/FiltersContext';
 import { useSelection } from '../../context/SelectionContext';
 import { useCampaign } from '../../context/CampaignContext';
 import { useSettings } from '../../context/SettingsContext';
 import { useSentHistory } from '../../context/SentHistoryContext';
-import { useNearbyLeads } from '../../hooks/useNearbyLeads';
 import { SENT_COOLDOWN_DAYS } from '../../lib/email/sentHistory';
+import { haversineMiles } from '../../lib/geo/haversine';
 import { BullseyeLogo } from '../brand/BullseyeLogo';
 import { TemplatePicker } from './TemplatePicker';
 import { EmailPreview } from './EmailPreview';
@@ -29,9 +28,14 @@ const TRANSITION_MS = 200;
 
 export function CampaignDrawer({ onPromptSettings }: { onPromptSettings: () => void }) {
   const { dataset } = useData();
-  const { filters } = useFilters();
   const { activeCustomerId } = useSelection();
-  const { drawerOpen, closeDrawer, selectedLeadIds, clearSelection } = useCampaign();
+  const {
+    drawerOpen,
+    closeDrawer,
+    selectedLeadIds,
+    clearSelection,
+    overrideAnchorId,
+  } = useCampaign();
   const { settings, isConfigured } = useSettings();
   const { isLeadBlocked } = useSentHistory();
 
@@ -54,23 +58,45 @@ export function CampaignDrawer({ onPromptSettings }: { onPromptSettings: () => v
     return () => window.clearTimeout(id);
   }, [drawerOpen]);
 
-  const { leads, active } = useNearbyLeads(
-    dataset?.customers ?? [],
-    activeCustomerId,
-    filters.radiusMiles
-  );
+  // Anchor resolution: prefer the explicit override (set by the per-lead
+  // "Send email" flow), else fall back to the currently-active customer
+  // (the standard "Build campaign" flow where active IS the closed
+  // customer the rep was viewing).
+  const effectiveAnchorId = overrideAnchorId ?? activeCustomerId;
+  const active = useMemo(() => {
+    if (!dataset || !effectiveAnchorId) return null;
+    return dataset.customers.find((c) => c.id === effectiveAnchorId) ?? null;
+  }, [dataset, effectiveAnchorId]);
 
-  // Defensive filter: even though the leads list disables checkboxes for
-  // cooldowned leads, a multi-tab race could let a lead enter cooldown after
-  // it was already selected. We drop those here and show a small notice.
+  // Build selectedLeads directly from selectedLeadIds (not from a
+  // radius-filtered nearby-leads list). The "Send email" flow can target
+  // leads outside the current radius, and the existing "Build campaign"
+  // flow's selections were already constrained by the leads-list UI, so
+  // looking up directly is correct in both cases. Distance gets computed
+  // per-lead from the resolved anchor.
   const { selectedLeads, excludedCount } = useMemo(() => {
-    const matching = leads.filter((l) => selectedLeadIds.has(l.customer.id));
-    const eligible = matching.filter((l) => !isLeadBlocked(l.customer));
-    return {
-      selectedLeads: eligible,
-      excludedCount: matching.length - eligible.length,
-    };
-  }, [leads, selectedLeadIds, isLeadBlocked]);
+    if (!dataset || !active) return { selectedLeads: [], excludedCount: 0 };
+    const eligible: { customer: typeof active; distanceMiles: number }[] = [];
+    let dropped = 0;
+    for (const id of selectedLeadIds) {
+      const customer = dataset.customers.find((c) => c.id === id);
+      if (!customer) continue;
+      if (isLeadBlocked(customer)) {
+        dropped++;
+        continue;
+      }
+      eligible.push({
+        customer,
+        distanceMiles: haversineMiles(
+          active.lat,
+          active.lng,
+          customer.lat,
+          customer.lng
+        ),
+      });
+    }
+    return { selectedLeads: eligible, excludedCount: dropped };
+  }, [dataset, selectedLeadIds, active, isLeadBlocked]);
 
   // Auto-prompt the SettingsDialog the first time the drawer opens with empty
   // settings. Runs once per drawer open.

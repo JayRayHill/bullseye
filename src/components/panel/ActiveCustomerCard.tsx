@@ -10,6 +10,7 @@
 
 import type { Customer } from '../../types';
 import { MarkContactedButton } from './MarkContactedButton';
+import { SendEmailButton } from './SendEmailButton';
 import { useSentHistory } from '../../context/SentHistoryContext';
 
 function StatusBadge({ status }: { status: Customer['deal_status'] }) {
@@ -61,7 +62,12 @@ export function ActiveCustomerCard({ customer }: { customer: Customer }) {
         ) : null}
       </dl>
       {showMarkContacted ? (
-        <div className="pt-1">
+        // Primary action ("Send email") + secondary action ("Mark contacted")
+        // sit side-by-side. The send button is green-primary because it's the
+        // most common follow-up; mark-contacted is the white-bordered
+        // alternative for when a touch already happened (phone call, etc.).
+        <div className="flex flex-wrap items-center gap-2 pt-1">
+          <SendEmailButton lead={customer} />
           <MarkContactedButton customer={customer} variant="button" />
         </div>
       ) : null}
