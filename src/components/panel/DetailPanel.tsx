@@ -125,11 +125,13 @@ export function DetailPanel() {
           {/* Sibling action: skip the email flow and just log a non-email
               touch (called, texted, met in person, other) on all selected
               leads at once. Same cooldown rules apply, same pink-pin
-              treatment. Anchored right so it sits under the chevron of the
-              primary action. */}
-          <div className="flex justify-end">
-            <MarkContactedButton customer={selectedCustomers} variant="button" />
-          </div>
+              treatment. fullWidth so it visually matches the Build
+              campaign button stacked above it. */}
+          <MarkContactedButton
+            customer={selectedCustomers}
+            variant="button"
+            fullWidth
+          />
         </div>
       ) : null}
     </section>

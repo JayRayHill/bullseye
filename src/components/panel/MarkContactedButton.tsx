@@ -33,6 +33,10 @@ interface MarkContactedButtonProps {
   /** Label override for the "button" variant. Defaults to "Mark contacted"
    *  for one customer, "Mark N as contacted" for multiple. */
   label?: string;
+  /** Stretch the "button" variant to fill its parent's width and align the
+   *  label flush-left with the chevron flush-right (matches the layout of
+   *  the sibling "Build campaign" button when stacked in the sticky bar). */
+  fullWidth?: boolean;
 }
 
 // Stroke-icon set matching the rest of the app's icon language (the Settings
@@ -94,12 +98,18 @@ export function MarkContactedButton({
   disabled,
   variant = 'icon',
   label,
+  fullWidth,
 }: MarkContactedButtonProps) {
   const { recordSent } = useSentHistory();
   const { settings } = useSettings();
   const toast = useToast();
   const [open, setOpen] = useState(false);
+  // When the menu would overflow the viewport below the trigger, flip it
+  // upward instead. Computed each time the menu opens by measuring the
+  // trigger's bounding rect against the viewport height.
+  const [openUpward, setOpenUpward] = useState(false);
   const ref = useRef<HTMLDivElement | null>(null);
+  const triggerRef = useRef<HTMLButtonElement | null>(null);
 
   // Normalize single/multi into a list so the rest of the component doesn't
   // care which form the caller passed.
@@ -122,6 +132,24 @@ export function MarkContactedButton({
       window.removeEventListener('keydown', onKey);
     };
   }, [open]);
+
+  // Decide upward vs downward placement each time the menu opens. The
+  // menu's max height is ~240px (4 method rows + a header). If there's
+  // less than that below the trigger but more than that above, flip up.
+  const onToggleOpen = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setOpen((prev) => {
+      const willOpen = !prev;
+      if (willOpen && triggerRef.current) {
+        const rect = triggerRef.current.getBoundingClientRect();
+        const MENU_HEIGHT_ESTIMATE = 240;
+        const spaceBelow = window.innerHeight - rect.bottom;
+        const spaceAbove = rect.top;
+        setOpenUpward(spaceBelow < MENU_HEIGHT_ESTIMATE && spaceAbove > spaceBelow);
+      }
+      return willOpen;
+    });
+  };
 
   const onPick = async (method: SendMethod, methodLabel: string) => {
     setOpen(false);
@@ -155,11 +183,9 @@ export function MarkContactedButton({
     <div ref={ref} className="relative">
       {variant === 'icon' ? (
         <button
+          ref={triggerRef}
           type="button"
-          onClick={(e) => {
-            e.stopPropagation();
-            setOpen((v) => !v);
-          }}
+          onClick={onToggleOpen}
           aria-haspopup="menu"
           aria-expanded={open}
           title="Mark this lead as contacted (phone, text, in-person…)"
@@ -182,20 +208,25 @@ export function MarkContactedButton({
         </button>
       ) : (
         <button
+          ref={triggerRef}
           type="button"
-          onClick={(e) => {
-            e.stopPropagation();
-            setOpen((v) => !v);
-          }}
+          onClick={onToggleOpen}
           aria-haspopup="menu"
           aria-expanded={open}
-          className="inline-flex items-center gap-2 rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm font-medium text-slate-800 transition-colors hover:bg-slate-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-400 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:hover:bg-slate-800"
+          className={
+            (fullWidth
+              ? 'flex w-full justify-between '
+              : 'inline-flex justify-start ') +
+            'items-center gap-2 rounded-md border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-800 transition-colors hover:bg-slate-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-400 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:hover:bg-slate-800'
+          }
         >
-          <PhoneIcon />
-          <span>{buttonLabel}</span>
+          <span className="flex items-center gap-2">
+            <PhoneIcon />
+            <span>{buttonLabel}</span>
+          </span>
           <svg
             viewBox="0 0 12 12"
-            className="h-3 w-3 text-slate-400"
+            className="h-3 w-3 shrink-0 text-slate-400"
             fill="none"
             stroke="currentColor"
             strokeWidth="1.8"
@@ -210,7 +241,10 @@ export function MarkContactedButton({
         <div
           role="menu"
           onClick={(e) => e.stopPropagation()}
-          className="absolute right-0 top-full z-40 mt-1 w-56 overflow-hidden rounded-lg border border-slate-200 bg-white py-1 shadow-lg dark:border-slate-700 dark:bg-slate-900"
+          className={
+            'absolute right-0 z-40 w-56 overflow-hidden rounded-lg border border-slate-200 bg-white py-1 shadow-lg dark:border-slate-700 dark:bg-slate-900 ' +
+            (openUpward ? 'bottom-full mb-1' : 'top-full mt-1')
+          }
         >
           <div className="border-b border-slate-100 px-3 py-2 text-[11px] font-semibold uppercase tracking-wide text-slate-500 dark:border-slate-800 dark:text-slate-400">
             Mark contacted
