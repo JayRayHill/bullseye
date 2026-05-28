@@ -24,10 +24,10 @@ export default {
           900: '#073a27',
         },
         // Semantic pin colors — closed deals share the brand color so the
-        // map IS the brand. Lost stays neutral; lead is the brand coral.
+        // map IS the brand. Lost stays neutral; lead is the brand baby-blue.
         closed: '#0c5f3f',
         lost: '#6b7280',
-        lead: '#ef8b55',
+        lead: '#bee4f3',
         // Full warm-shifted slate scale. Tailwind's default slate is cool
         // (hue ~215°) which reads as blue-ish — wrong for chrome built around
         // the UNIQ Supply warm dark (#231f20). These values are tuned to the

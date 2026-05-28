@@ -16,10 +16,15 @@ const BRAND_700 = '#0c5f3f';
 const BRAND_300 = '#74d2a4';
 const LOST_GRAY = '#6b7280';
 const LOST_GRAY_LIGHT = '#9ca3af';
-// Brand coral for open-lead pins — warmer and softer than the previous
-// amber (#f59e0b). Keeps the constant name as LEAD_AMBER for blame-history
-// continuity even though the actual hex is now a coral.
-const LEAD_AMBER = '#ef8b55';
+// Brand light-blue for open-lead pins. (History: amber #f59e0b →
+// coral #ef8b55 → this baby blue.) Constant renamed to LEAD_BLUE to
+// match the current color.
+const LEAD_BLUE = '#bee4f3';
+// Deeper blue from the same hue family, used for the lead pin's inner dot.
+// The fill is pale enough that a white dot (like the closed/lost pins use)
+// would vanish — this gives the teardrop a visible center while keeping
+// the white outer stroke as the map-popping halo.
+const LEAD_BLUE_DARK = '#3a9bd1';
 // Soft brand pink for leads that have already been contacted (i.e. there's
 // a sent-history entry within the cooldown window). Makes the "I've
 // already emailed this one" state visible from the map without needing
@@ -64,11 +69,14 @@ function lostPin(darkTile: boolean, hover: boolean): string {
 
 function leadPin(hover: boolean, contacted = false): string {
   const scale = hover ? 1.1 : 1;
-  const fill = contacted ? LEAD_CONTACTED_PINK : LEAD_AMBER;
+  const fill = contacted ? LEAD_CONTACTED_PINK : LEAD_BLUE;
+  // Pink (contacted) keeps the white dot for contrast; pale blue needs the
+  // deeper-blue dot so the center reads against the light fill.
+  const dot = contacted ? WHITE : LEAD_BLUE_DARK;
   return `<svg xmlns="http://www.w3.org/2000/svg" width="${LOGICAL_SIZE}" height="${LOGICAL_SIZE}" viewBox="0 0 32 32">
     <g transform="translate(${(32 - 24 * scale) / 2}, 1) scale(${scale}, ${scale * VERT_FIT})">
       <path d="M12 0C5.4 0 0 5.4 0 12c0 8 12 20 12 20s12-12 12-20C24 5.4 18.6 0 12 0z" fill="${fill}" stroke="${WHITE}" stroke-width="2"/>
-      <circle cx="12" cy="12" r="4" fill="${WHITE}"/>
+      <circle cx="12" cy="12" r="4" fill="${dot}"/>
     </g>
   </svg>`;
 }
