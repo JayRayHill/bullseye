@@ -19,7 +19,7 @@ function StatusBadge({ status }: { status: Customer['deal_status'] }) {
       ? 'bg-brand-100 text-brand-900 dark:bg-brand-900/40 dark:text-brand-100'
       : status === 'lost'
         ? 'bg-slate-200 text-slate-700 dark:bg-slate-800 dark:text-slate-300'
-        : 'bg-amber-100 text-amber-900 dark:bg-amber-900/40 dark:text-amber-100';
+        : 'bg-sky-100 text-sky-900 dark:bg-sky-900/40 dark:text-sky-100';
   const label = status === 'closed' ? 'Closed' : status === 'lost' ? 'Lost' : 'Open';
   return <span className={`rounded px-2 py-0.5 text-xs font-medium ${styles}`}>{label}</span>;
 }
