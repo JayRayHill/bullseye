@@ -146,7 +146,7 @@ function LeadRow({ lead }: { lead: NearbyLead }) {
   // Background priority: hover > selected > blocked > default
   let rowBg: string;
   if (isHover) {
-    rowBg = 'bg-sky-50 dark:bg-sky-900/30';
+    rowBg = 'bg-amber-50 dark:bg-amber-900/30';
   } else if (isSelected && !blocked) {
     rowBg = 'bg-brand-50 ring-1 ring-inset ring-brand-200 dark:bg-brand-900/30 dark:ring-brand-800';
   } else if (blocked) {

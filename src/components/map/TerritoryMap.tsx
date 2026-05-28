@@ -673,7 +673,7 @@ export function TerritoryMap({ customers, allCustomers }: TerritoryMapProps) {
           .filter(Boolean)
           .join(', ');
         const statusLine = alreadyContacted
-          ? `<div style="color: #b8377a;">Already contacted</div>`
+          ? `<div style="color: #2d7fb0;">Already contacted</div>`
           : `<div style="color: #64748b;">Open</div>`;
         const html = `
           <div style="font-size: 12px; line-height: 1.4;">

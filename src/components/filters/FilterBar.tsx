@@ -23,8 +23,8 @@ const STATUS_CHIPS: { value: DealStatus; label: string; idle: string; active: st
   {
     value: 'not_closed',
     label: 'Open',
-    idle: 'bg-sky-100 text-sky-900 hover:bg-sky-200 dark:bg-sky-900/30 dark:text-sky-100 dark:hover:bg-sky-900/50',
-    active: 'bg-sky-500 text-white shadow-sm dark:bg-sky-400 dark:text-slate-900',
+    idle: 'bg-amber-100 text-amber-900 hover:bg-amber-200 dark:bg-amber-900/30 dark:text-amber-100 dark:hover:bg-amber-900/50',
+    active: 'bg-amber-500 text-white shadow-sm dark:bg-amber-400 dark:text-slate-900',
   },
   {
     value: 'lost',

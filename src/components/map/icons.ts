@@ -16,20 +16,16 @@ const BRAND_700 = '#0c5f3f';
 const BRAND_300 = '#74d2a4';
 const LOST_GRAY = '#6b7280';
 const LOST_GRAY_LIGHT = '#9ca3af';
-// Brand light-blue for open-lead pins. (History: amber #f59e0b →
-// coral #ef8b55 → this baby blue.) Constant renamed to LEAD_BLUE to
-// match the current color.
-const LEAD_BLUE = '#bee4f3';
-// Deeper blue from the same hue family, used for the lead pin's inner dot.
-// The fill is pale enough that a white dot (like the closed/lost pins use)
-// would vanish — this gives the teardrop a visible center while keeping
+// Coral for open-lead pins (not yet contacted). History: amber #f59e0b →
+// this coral.
+const LEAD_CORAL = '#ef8b55';
+// Baby blue for leads that have already been contacted (sent-history entry
+// within the cooldown window). Surfaces the "I've already reached this one"
+// state on the map without opening the leads list. The fill is pale, so the
+// pin uses a deeper-blue inner dot (a white dot would vanish) while keeping
 // the white outer stroke as the map-popping halo.
-const LEAD_BLUE_DARK = '#3a9bd1';
-// Soft brand pink for leads that have already been contacted (i.e. there's
-// a sent-history entry within the cooldown window). Makes the "I've
-// already emailed this one" state visible from the map without needing
-// to open the nearby-leads list and read the cooldown badge.
-const LEAD_CONTACTED_PINK = '#f59bb9';
+const LEAD_CONTACTED_BLUE = '#bee4f3';
+const LEAD_CONTACTED_BLUE_DARK = '#3a9bd1';
 const WHITE = '#ffffff';
 
 // We render to a transparent 64×64 canvas for retina; report the logical size
@@ -69,10 +65,10 @@ function lostPin(darkTile: boolean, hover: boolean): string {
 
 function leadPin(hover: boolean, contacted = false): string {
   const scale = hover ? 1.1 : 1;
-  const fill = contacted ? LEAD_CONTACTED_PINK : LEAD_BLUE;
-  // Pink (contacted) keeps the white dot for contrast; pale blue needs the
-  // deeper-blue dot so the center reads against the light fill.
-  const dot = contacted ? WHITE : LEAD_BLUE_DARK;
+  const fill = contacted ? LEAD_CONTACTED_BLUE : LEAD_CORAL;
+  // Coral (open) keeps the white dot for contrast; the pale contacted blue
+  // needs the deeper-blue dot so the center reads against the light fill.
+  const dot = contacted ? LEAD_CONTACTED_BLUE_DARK : WHITE;
   return `<svg xmlns="http://www.w3.org/2000/svg" width="${LOGICAL_SIZE}" height="${LOGICAL_SIZE}" viewBox="0 0 32 32">
     <g transform="translate(${(32 - 24 * scale) / 2}, 1) scale(${scale}, ${scale * VERT_FIT})">
       <path d="M12 0C5.4 0 0 5.4 0 12c0 8 12 20 12 20s12-12 12-20C24 5.4 18.6 0 12 0z" fill="${fill}" stroke="${WHITE}" stroke-width="2"/>
