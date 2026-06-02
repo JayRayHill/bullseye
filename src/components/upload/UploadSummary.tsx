@@ -62,8 +62,15 @@ export function UploadSummary({
             {totals.unverifiedEmail > 0 ? (
               <SkipChip
                 count={totals.unverifiedEmail}
-                label="email failed verification"
-                hint="MillionVerifier didn't mark this email as deliverable. Skipped to protect our sending reputation from bounces."
+                label="open lead — email failed verification"
+                hint="MillionVerifier didn't mark this email as deliverable. Skipped to protect our sending reputation from bounces. Closed customers with the same issue are kept (they're anchors, not recipients)."
+              />
+            ) : null}
+            {totals.openLeadNoEmail > 0 ? (
+              <SkipChip
+                count={totals.openLeadNoEmail}
+                label="open lead — no email on file"
+                hint="Open leads with no email can't be contacted via the verified pipeline. Closed customers with no email are still kept (they're used as anchors, not direct recipients)."
               />
             ) : null}
           </div>

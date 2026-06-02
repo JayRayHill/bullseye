@@ -130,6 +130,7 @@ export function normalizeRows(
   let missingBusinessName = 0;
   let invalidZip = 0;
   let unverifiedEmail = 0;
+  let openLeadNoEmail = 0;
   let unknownZip = 0;
 
   rows.forEach((row, rowIndex) => {
@@ -194,18 +195,35 @@ export function normalizeRows(
     const contactName = readField(row, mapping, alternates, 'contact_name').trim() || undefined;
     const email = readField(row, mapping, alternates, 'email').trim() || undefined;
     // Email verification gate (seed-data flow only — custom uploads pass
-    // verifiedEmails=undefined and skip this check). When a row HAS an email
-    // but it's not in the MillionVerifier-confirmed set, drop the row to
-    // protect our sending reputation. Rows with NO email at all are kept
-    // since they can't bounce anyway and are still reachable by other means.
-    if (verifiedEmails && email && !verifiedEmails.has(email.toLowerCase())) {
-      unverifiedEmail += 1;
-      errors.push({
-        rowIndex,
-        reason: 'other',
-        message: `Email "${email}" did not pass deliverability verification.`,
-      });
-      return;
+    // verifiedEmails=undefined and skip this check).
+    //
+    // Closed customers: ALWAYS kept regardless of email status. They serve
+    // as anchors / proof points for nearby outreach, not as direct recipients,
+    // so deliverability doesn't matter.
+    //
+    // Open leads: ONLY kept if their email is in the MillionVerifier-confirmed
+    // set. Open leads with no email OR with an unverified email are skipped,
+    // because they can't be reached without bounce-risk or aren't reachable
+    // by email at all.
+    if (verifiedEmails && status === 'not_closed') {
+      if (!email) {
+        openLeadNoEmail += 1;
+        errors.push({
+          rowIndex,
+          reason: 'other',
+          message: 'Open lead has no email address.',
+        });
+        return;
+      }
+      if (!verifiedEmails.has(email.toLowerCase())) {
+        unverifiedEmail += 1;
+        errors.push({
+          rowIndex,
+          reason: 'other',
+          message: `Email "${email}" did not pass deliverability verification.`,
+        });
+        return;
+      }
     }
     const phone = readField(row, mapping, alternates, 'phone').trim() || undefined;
     const address = readField(row, mapping, alternates, 'address').trim() || undefined;
@@ -251,6 +269,7 @@ export function normalizeRows(
         invalidZip,
         unknownZip,
         unverifiedEmail,
+        openLeadNoEmail,
       },
       uploadedAt: new Date().toISOString(),
       sourceFilename,

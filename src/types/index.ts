@@ -74,8 +74,15 @@ export interface DatasetTotals {
   unknownZip: number;
   /** Only counted when the row's email is checked against the bundled
    *  MillionVerifier-verified set (the "Use the default list" flow).
-   *  Custom uploads don't run this check, so this stays 0 for them. */
+   *  Open leads only — closed customers are kept regardless of email
+   *  status since they're anchors, not direct recipients. Custom uploads
+   *  don't run this check, so this stays 0 for them. */
   unverifiedEmail: number;
+  /** Open leads dropped because they had no email at all and therefore
+   *  couldn't be email-contacted in a deliverability-safe way. Closed
+   *  customers without email are still kept (they're anchors). Only
+   *  populated in the seed-data flow. */
+  openLeadNoEmail: number;
 }
 
 export interface Dataset {
