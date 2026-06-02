@@ -1,23 +1,18 @@
-// The "send" footer. Two paths:
+// The "send" footer. Single path: mailto stepper.
 //
-// 1. Send via Gmail — opens one or more Gmail compose tabs with the BCC list.
-//    The body is rendered in `genericLead` mode so per-lead tokens collapse
-//    (one body goes to every recipient).
-//
-// 2. Open mailto, one at a time — surfaces a stepper. Each click opens the
-//    next lead's mailto: with FULL per-lead personalization. The rep returns
-//    after sending and clicks "Next" to advance.
+// Each click opens the next lead's mailto: with FULL per-lead personalization
+// (template, spintax variations seeded by lead identity, merge fields). The
+// rep sends in their email client, returns to the drawer, clicks "Next lead"
+// to advance. Mailto is the only path because the Gmail BCC alternative
+// was removed — BCC blasts to many recipients at once carry far more
+// deliverability risk than spaced-out, fully-personalized one-by-one sends.
 
 import { useMemo, useRef, useState } from 'react';
 import type { Customer, RepSettings } from '../../types';
 import type { NearbyLead } from '../../hooks/useNearbyLeads';
 import { findTemplate } from '../../lib/email/templates';
 import { fillMergeFields } from '../../lib/email/mergeFields';
-import {
-  buildGmailComposeUrls,
-  buildMailtoUrl,
-  GMAIL_BCC_LIMIT,
-} from '../../lib/email/composeUrls';
+import { buildMailtoUrl } from '../../lib/email/composeUrls';
 import { useCampaign } from '../../context/CampaignContext';
 import { useSentHistory } from '../../context/SentHistoryContext';
 import { useToast } from '../common/ToastProvider';
@@ -64,52 +59,6 @@ export function SendActions({ selectedLeads, anchor, settings }: SendActionsProp
     }
     return { valid, invalidFormat, missingEmail };
   }, [selectedLeads]);
-
-  const recipientEmails = useMemo(
-    () =>
-      preflight.valid
-        .map((l) => l.customer.email)
-        .filter((e): e is string => !!e),
-    [preflight]
-  );
-
-  const onSendGmail = () => {
-    if (recipientEmails.length === 0 || !preflight.valid[0]) return;
-    const first = preflight.valid[0];
-    const filled = fillMergeFields(composedTemplate, {
-      lead: first.customer,
-      anchor,
-      distanceMiles: first.distanceMiles,
-      settings,
-      mode: 'genericLead',
-    });
-    const batches = buildGmailComposeUrls({
-      bcc: recipientEmails,
-      subject: filled.subject,
-      body: filled.body,
-    });
-    for (const batch of batches) {
-      window.open(batch.url, '_blank', 'noopener');
-    }
-    // Record only the leads we actually opened in Gmail (valid emails). Reps
-    // can clear false records in Settings if they abandoned a compose tab.
-    const sentCustomers = preflight.valid.map((l) => l.customer);
-    recordSent({
-      leads: sentCustomers,
-      anchor,
-      template,
-      method: 'gmail',
-      recordedBy: settings.firstName,
-    });
-    if (batches.length > 1) {
-      toast.show(
-        'info',
-        `Opened ${batches.length} Gmail tabs (Gmail caps each send at ${GMAIL_BCC_LIMIT} recipients).`
-      );
-    } else {
-      toast.show('info', `Opened Gmail with ${recipientEmails.length} recipients in BCC.`);
-    }
-  };
 
   const onStartMailtoStepper = () => {
     // Stepper only walks the leads with deliverable emails — no point opening
@@ -288,25 +237,17 @@ export function SendActions({ selectedLeads, anchor, settings }: SendActionsProp
         </p>
       ) : (
         <>
-          <div className="flex flex-wrap gap-2">
-            <button
-              type="button"
-              onClick={onSendGmail}
-              className="rounded-md bg-brand-700 px-4 py-1.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-brand-800 dark:bg-brand-600 dark:hover:bg-brand-500"
-            >
-              Send via Gmail (BCC)
-            </button>
-            <button
-              type="button"
-              onClick={onStartMailtoStepper}
-              className="rounded-md border border-slate-300 bg-white px-4 py-1.5 text-sm font-medium text-slate-800 transition-colors hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
-            >
-              Open mailto, one at a time
-            </button>
-          </div>
+          <button
+            type="button"
+            onClick={onStartMailtoStepper}
+            className="rounded-md bg-brand-700 px-4 py-1.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-brand-800 dark:bg-brand-600 dark:hover:bg-brand-500"
+          >
+            Send one at a time →
+          </button>
           <p className="text-xs text-slate-500 dark:text-slate-400">
-            Gmail BCC sends one body to everyone — per-lead names collapse to &ldquo;your business&rdquo; etc.
-            Mailto fully personalizes each email but opens one window at a time.
+            Opens one fully-personalized email at a time in your default mail
+            client. Each lead gets their own name, business, distance, and a
+            seeded spintax variation. Sent-history records as you advance.
           </p>
         </>
       )}
