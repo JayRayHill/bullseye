@@ -17,6 +17,7 @@ import { parseXlsxFile } from './parseXlsx';
 import { autoDetectColumns } from './autoDetectColumns';
 import { normalizeRows } from './normalizeRow';
 import { loadZipCoords } from '../../hooks/useZipCoords';
+import { loadVerifiedEmails } from '../../hooks/useVerifiedEmails';
 
 const SEED_URL = '/seed-data.xlsx';
 const SEED_FILENAME = 'Bullseye Customer List.xlsx';
@@ -45,11 +46,14 @@ export async function loadDefaultDataset(): Promise<LoadDefaultResult> {
   });
 
   // Same pipeline as the upload flow: parse → auto-detect → normalize.
-  // Zip coords loaded in parallel with parsing so the normalize step
-  // doesn't block on the network.
-  const [parsed, coords] = await Promise.all([
+  // Zip coords + verified-email set loaded in parallel with parsing so the
+  // normalize step doesn't block on either network fetch. The verified-email
+  // set is only applied to this seed-data flow — custom uploads don't run
+  // through MillionVerifier so they pass undefined and skip the gate.
+  const [parsed, coords, verifiedEmails] = await Promise.all([
     parseXlsxFile(file),
     loadZipCoords(),
+    loadVerifiedEmails(),
   ]);
   if (!parsed.headers.length || !parsed.rows.length) {
     throw new Error('The default file is empty or has no header row.');
@@ -61,7 +65,8 @@ export async function loadDefaultDataset(): Promise<LoadDefaultResult> {
     mapping,
     coords,
     SEED_FILENAME,
-    alternates
+    alternates,
+    verifiedEmails
   );
   return { dataset, errors };
 }

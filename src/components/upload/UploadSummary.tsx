@@ -59,6 +59,13 @@ export function UploadSummary({
                 hint="Looks like a 5-digit zip but isn't a known US ZIP code (e.g., a typo or a non-US postal code)."
               />
             ) : null}
+            {totals.unverifiedEmail > 0 ? (
+              <SkipChip
+                count={totals.unverifiedEmail}
+                label="email failed verification"
+                hint="MillionVerifier didn't mark this email as deliverable. Skipped to protect our sending reputation from bounces."
+              />
+            ) : null}
           </div>
 
           {errors.length > 0 ? (

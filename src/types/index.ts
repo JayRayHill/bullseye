@@ -68,10 +68,14 @@ export interface DatasetTotals {
   invalid: number;
   /** Breakdown of `invalid` by skip reason — surfaced in the upload summary
    *  so the rep can see at a glance WHY rows were dropped, not just how many.
-   *  These three sum to `invalid` (each skipped row is counted once). */
+   *  These all sum to `invalid` (each skipped row is counted once). */
   missingBusinessName: number;
   invalidZip: number;
   unknownZip: number;
+  /** Only counted when the row's email is checked against the bundled
+   *  MillionVerifier-verified set (the "Use the default list" flow).
+   *  Custom uploads don't run this check, so this stays 0 for them. */
+  unverifiedEmail: number;
 }
 
 export interface Dataset {
