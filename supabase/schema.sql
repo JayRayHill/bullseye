@@ -104,6 +104,27 @@ create policy "anon can delete customer_notes" on customer_notes
 -- Enable realtime for both tables so the app receives INSERT/UPDATE/DELETE
 -- events over websocket. Each rep's browser subscribes via supabase.channel(...)
 -- and merges updates into the local cache without polling.
+--
+-- Wrapped in DO blocks because ALTER PUBLICATION ... ADD TABLE errors
+-- with 42710 (already member) on re-run. Idempotent: skip the ADD if the
+-- table is already in the publication.
 
-alter publication supabase_realtime add table sent_history;
-alter publication supabase_realtime add table customer_notes;
+do $$
+begin
+  if not exists (
+    select 1 from pg_publication_tables
+    where pubname = 'supabase_realtime' and tablename = 'sent_history'
+  ) then
+    alter publication supabase_realtime add table sent_history;
+  end if;
+end $$;
+
+do $$
+begin
+  if not exists (
+    select 1 from pg_publication_tables
+    where pubname = 'supabase_realtime' and tablename = 'customer_notes'
+  ) then
+    alter publication supabase_realtime add table customer_notes;
+  end if;
+end $$;
